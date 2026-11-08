@@ -1,0 +1,69 @@
+CREATE DATABASE IF NOT EXISTS campus_atlas
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_0900_as_cs;
+
+USE campus_atlas;
+
+CREATE TABLE users (
+  userID BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_name VARCHAR(100) NOT NULL,
+  email VARCHAR(254) NOT NULL UNIQUE,
+  user_password VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE students (
+  userID BIGINT UNSIGNED PRIMARY KEY,
+  FOREIGN KEY (userID) REFERENCES users (userID)
+);
+
+CREATE TABLE admins (
+  userID BIGINT UNSIGNED PRIMARY KEY,
+  FOREIGN KEY (userID) REFERENCES users (userID)
+);
+
+CREATE TABLE buildings (
+  buildingID BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  build_name VARCHAR(150) NOT NULL,
+  campus VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE categories (
+  categoryID BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  category_name VARCHAR(100) NOT NULL UNIQUE
+);
+
+CREATE TABLE facilities (
+  facilityID BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  buildingID BIGINT UNSIGNED NOT NULL,
+  categoryID BIGINT UNSIGNED NOT NULL,
+  floor VARCHAR(20) NOT NULL,
+  latitude DECIMAL(9, 6) NOT NULL,
+  longitude DECIMAL(9, 6) NOT NULL,
+  facility_status VARCHAR(20) NOT NULL,
+  archived BOOLEAN NOT NULL DEFAULT FALSE,
+  FOREIGN KEY (buildingID) REFERENCES buildings (buildingID),
+  FOREIGN KEY (categoryID) REFERENCES categories (categoryID)
+);
+
+CREATE TABLE reports (
+  reportID BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  facilityID BIGINT UNSIGNED NOT NULL,
+  studentID BIGINT UNSIGNED NOT NULL,
+  adminID BIGINT UNSIGNED NULL,
+  proposed_status VARCHAR(20) NOT NULL,
+  review_status VARCHAR(20) NOT NULL,
+  FOREIGN KEY (facilityID) REFERENCES facilities (facilityID),
+  FOREIGN KEY (studentID) REFERENCES students (userID),
+  FOREIGN KEY (adminID) REFERENCES admins (userID)
+);
+
+CREATE TABLE revisions (
+  revisionID BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  reportID BIGINT UNSIGNED NOT NULL,
+  adminID BIGINT UNSIGNED NOT NULL,
+  old_status VARCHAR(20) NOT NULL,
+  new_status VARCHAR(20) NOT NULL,
+  UNIQUE (reportID),
+  FOREIGN KEY (reportID) REFERENCES reports (reportID),
+  FOREIGN KEY (adminID) REFERENCES admins (userID)
+);
