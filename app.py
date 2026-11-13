@@ -4,7 +4,6 @@ import secrets
 import pymysql
 from flask import render_template, Flask, abort, g, jsonify, request, session
 from pymysql.cursors import DictCursor
-from werkzeug.security import check_password_hash
 
 app = Flask(__name__, static_folder="map-preview", static_url_path="")
 app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_bytes(32)
@@ -49,7 +48,7 @@ def campus_map():
 def login():
     data = request.get_json()
     rows = query("SELECT u.userID, u.user_password FROM users u JOIN admins a USING (userID) WHERE email=%s", (data["email"],))
-    if not rows or not check_password_hash(rows[0]["user_password"], data["password"]):
+    if not rows or rows[0]["user_password"] != data.get("password"):
         abort(401)
     session.clear()
     session["admin"] = rows[0]["userID"]

@@ -1,11 +1,11 @@
 USE campus_atlas;
 
 INSERT INTO users (userID, user_name, email, user_password) VALUES
-  (1, 'student1', 'student1@connect.hku.hk', 'pbkdf2:sha256:600000$onQCsOCTlINhQDd6$833c9bf7bd2ec532f955f3529831cc65d6e9125d7b500233a0ca04d89d72fc39'),
-  (2, 'student2', 'student2@connect.hku.hk', 'pbkdf2:sha256:600000$Qczceqqxd9t4iSFl$d24d14844f6c2fe4f94d2e93fb32ad2ed65c08fcf13f175016466a9cd4a5892b'),
-  (3, 'student3', 'student3@connect.hku.hk', 'pbkdf2:sha256:600000$iK6eplCC45eF9PBF$524f257c5a5de1bbc00ea32d51d47f655bb9f1ed5a70d27883db0e3b40d07589'),
-  (4, 'admin1', 'admin1@connect.hku.hk', 'pbkdf2:sha256:600000$5GXE3WIh47Qp3MXl$7945745fa912500786d36be0ecf9bd5dd37a07b76b3eac5c10e6834b0172960e'),
-  (5, 'admin2', 'admin2@connect.hku.hk', 'pbkdf2:sha256:600000$xe7KcZURbQXHDNEm$238db25554ea1d002dd7bb5227bd9aa8e0320522f19198c1a0b08d07df22aa88');
+  (1, 'student1', 'student1@connect.hku.hk', 'student1'),
+  (2, 'student2', 'student2@connect.hku.hk', 'student2'),
+  (3, 'student3', 'student3@connect.hku.hk', 'student3'),
+  (4, 'admin1', 'admin1@connect.hku.hk', 'admin1'),
+  (5, 'admin2', 'admin2@connect.hku.hk', 'admin2');
 
 INSERT INTO students (userID) VALUES
   (1),
