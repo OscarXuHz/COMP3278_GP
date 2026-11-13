@@ -135,9 +135,9 @@ ROLLBACK;
 START TRANSACTION;
 
 INSERT INTO facilities (
-  buildingID, categoryID, floor, latitude, longitude, facility_status
+  buildingID, categoryID, floor, facility_status
 )
-SELECT 1, 1, '2F', 22.283100, 114.137600, 'Available'
+SELECT 26, 1, '2F', 'Available'
 FROM admins
 WHERE userID = 4;
 

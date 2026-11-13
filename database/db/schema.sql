@@ -22,8 +22,10 @@ CREATE TABLE admins (
 );
 
 CREATE TABLE buildings (
-  buildingID BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  buildingID BIGINT UNSIGNED PRIMARY KEY,
   build_name VARCHAR(150) NOT NULL,
+  map_x INT UNSIGNED NOT NULL,
+  map_y INT UNSIGNED NOT NULL,
   campus VARCHAR(100) NOT NULL
 );
 
@@ -37,8 +39,6 @@ CREATE TABLE facilities (
   buildingID BIGINT UNSIGNED NOT NULL,
   categoryID BIGINT UNSIGNED NOT NULL,
   floor VARCHAR(20) NOT NULL,
-  latitude DECIMAL(9, 6) NOT NULL,
-  longitude DECIMAL(9, 6) NOT NULL,
   facility_status VARCHAR(20) NOT NULL,
   archived BOOLEAN NOT NULL DEFAULT FALSE,
   FOREIGN KEY (buildingID) REFERENCES buildings (buildingID),
