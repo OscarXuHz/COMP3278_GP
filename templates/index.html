@@ -13,32 +13,56 @@
     <aside aria-label="Facility browser">
       <header class="header">
         <div><a class="brand" href="/">Campus Atlas<span aria-hidden="true">.</span></a><p class="location">HKU / Main Campus</p></div>
-        {% if admin_page %}<a class="back-link" href="/" aria-label="Back to campus map" title="Back to campus map">↗</a>{% endif %}
+        {% if admin_page or student_page %}<a class="back-link" href="/" aria-label="Back to campus map" title="Back to campus map">↗</a>{% endif %}
       </header>
+      {% if not admin_page and not student_page %}
+      <nav class="entry-links" aria-label="Sign in">
+        <a href="/student"><strong>Student</strong><span>Submit a report and follow its review.</span></a>
+        <a href="/admin"><strong>Admin</strong><span>Review reports and trace facility history.</span></a>
+      </nav>
+      {% endif %}
+      {% if admin_page or student_page %}
+      <div class="management">
+        <form id="login" class="sign-in" hidden>
+          <input type="hidden" name="role" value="{{ 'student' if student_page else 'admin' }}">
+          <div class="sign-in-copy">
+            <p class="role-kicker">{{ 'Student' if student_page else 'Admin' }}</p>
+            <h2>{{ 'Sign in to report' if student_page else 'Sign in to review' }}</h2>
+            <p class="role-note">{{ 'Submit a facility report and follow its review.' if student_page else 'Review reports, update facilities, and trace revisions.' }}</p>
+          </div>
+          <label>Email<input name="email" type="email" autocomplete="username" required></label>
+          <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+          <button class="primary">{{ 'Student sign in' if student_page else 'Admin sign in' }}</button>
+        </form>
+        <div class="admin-actions">{% if admin_page %}<button id="add" class="primary" hidden>+ Add facility</button>{% endif %}<button id="account" class="text-button" hidden>Sign out</button></div>
+      </div>
+      {% endif %}
       <div class="filters">
         <label for="building" class="sr-only">Building</label>
         <div class="building-field"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M6 21V4h12v17M9 8h1m4 0h1M9 12h1m4 0h1M10 21v-5h4v5"/></svg><select id="building"></select></div>
         <div id="categories" class="categories" role="group" aria-label="Facility category"></div>
       </div>
-      {% if admin_page %}
-      <div class="management">
-        <form id="login" hidden>
-          <label>Email<input name="email" type="email" autocomplete="username" required></label>
-          <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
-          <button class="primary">Admin sign in</button>
-        </form>
-        <div class="admin-actions"><button id="add" class="primary" hidden>+ Add facility</button><button id="account" class="text-button" hidden>Sign out</button></div>
-      </div>
-      {% endif %}
       <p id="message" role="alert"></p>
-      <div class="results-heading"><h1>Facilities <span id="count" aria-live="polite">…</span></h1><button id="reset" class="text-button">Reset</button></div>
+      <div class="results-heading"><h1><span id="list-label">Facilities</span> <span id="count" aria-live="polite">…</span></h1><div class="heading-actions"><button id="show-reports" class="text-button" hidden>Reports</button><button id="reset" class="text-button">Reset</button></div></div>
       <section id="items" aria-label="Facilities"></section>
+      <button id="resize" class="resize-handle" type="button" aria-label="Resize panel"></button>
     </aside>
     <section class="map-panel" aria-label="Campus map">
       <div id="map"></div>
       <button id="full-map" class="map-button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3H3v6m12-6h6v6M3 15v6h6m12-6v6h-6"/></svg>Full map</button>
     </section>
   </main>
+  {% if student_page %}
+  <dialog id="report-dialog" aria-labelledby="report-title">
+    <form id="report-form">
+      <h2 id="report-title">Report facility</h2>
+      <p id="report-summary" class="report-summary"></p>
+      <p id="report-message" role="alert"></p>
+      <label>Proposed status<select name="proposed_status"><option>Available</option><option>Unavailable</option><option>Unknown</option></select></label>
+      <div class="actions"><button type="button" id="report-cancel">Cancel</button><button class="primary">Submit report</button></div>
+    </form>
+  </dialog>
+  {% endif %}
   {% if admin_page %}
   <dialog id="facility-dialog" aria-labelledby="editor-title">
     <form id="editor">
@@ -52,6 +76,12 @@
       </div>
       <div class="actions"><button type="button" id="cancel">Cancel</button><button class="primary">Save changes</button></div>
     </form>
+  </dialog>
+  <dialog id="history-dialog" aria-labelledby="history-title">
+    <h2 id="history-title">Revision history</h2>
+    <p id="history-summary" class="report-summary"></p>
+    <div id="history-list"></div>
+    <div class="actions"><button type="button" id="history-close">Close</button></div>
   </dialog>
   {% endif %}
   <script src="/vendor/leaflet.js"></script>
