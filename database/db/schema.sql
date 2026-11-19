@@ -22,7 +22,7 @@ CREATE TABLE admins (
 );
 
 CREATE TABLE buildings (
-  buildingID BIGINT UNSIGNED PRIMARY KEY,
+  buildingID VARCHAR(10) PRIMARY KEY,
   build_name VARCHAR(150) NOT NULL,
   map_x INT UNSIGNED NOT NULL,
   map_y INT UNSIGNED NOT NULL,
@@ -36,11 +36,13 @@ CREATE TABLE categories (
 
 CREATE TABLE facilities (
   facilityID BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  buildingID BIGINT UNSIGNED NOT NULL,
+  buildingID VARCHAR(10) NOT NULL,
   categoryID BIGINT UNSIGNED NOT NULL,
   floor VARCHAR(20) NOT NULL,
   facility_status VARCHAR(20) NOT NULL,
   archived BOOLEAN NOT NULL DEFAULT FALSE,
+  CONSTRAINT facilities_status_chk
+    CHECK (facility_status IN ('Available', 'Unavailable')),
   FOREIGN KEY (buildingID) REFERENCES buildings (buildingID),
   FOREIGN KEY (categoryID) REFERENCES categories (categoryID)
 );
@@ -52,18 +54,97 @@ CREATE TABLE reports (
   adminID BIGINT UNSIGNED NULL,
   proposed_status VARCHAR(20) NOT NULL,
   review_status VARCHAR(20) NOT NULL,
+  create_note TEXT NULL,
+  review_note TEXT NULL,
+  review_time TIMESTAMP NULL,
+  report_create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT reports_proposed_status_chk
+    CHECK (proposed_status IN ('Available', 'Unavailable')),
+  CONSTRAINT reports_review_status_chk
+    CHECK (review_status IN ('Pending', 'Approved', 'Rejected', 'Expired')),
+  CONSTRAINT reports_review_fields_chk
+    CHECK (
+      (review_status IN ('Pending', 'Expired')
+        AND adminID IS NULL
+        AND review_time IS NULL)
+      OR
+      (review_status IN ('Approved', 'Rejected')
+        AND adminID IS NOT NULL
+        AND review_time IS NOT NULL)
+    ),
   FOREIGN KEY (facilityID) REFERENCES facilities (facilityID),
   FOREIGN KEY (studentID) REFERENCES students (userID),
   FOREIGN KEY (adminID) REFERENCES admins (userID)
 );
 
+CREATE TABLE report_photos (
+  reportID BIGINT UNSIGNED NOT NULL,
+  photo VARCHAR(512) NOT NULL,
+  PRIMARY KEY (reportID, photo),
+  FOREIGN KEY (reportID) REFERENCES reports (reportID)
+);
+
+-- reportID is null when an admin changes facility status directly.
+-- When reportID is set, facilityID is the facility that report is about.
 CREATE TABLE revisions (
   revisionID BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  reportID BIGINT UNSIGNED NOT NULL,
+  facilityID BIGINT UNSIGNED NOT NULL,
+  reportID BIGINT UNSIGNED NULL,
   adminID BIGINT UNSIGNED NOT NULL,
   old_status VARCHAR(20) NOT NULL,
   new_status VARCHAR(20) NOT NULL,
+  revision_create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE (reportID),
+  CONSTRAINT revisions_old_status_chk
+    CHECK (old_status IN ('Available', 'Unavailable')),
+  CONSTRAINT revisions_new_status_chk
+    CHECK (new_status IN ('Available', 'Unavailable')),
+  FOREIGN KEY (facilityID) REFERENCES facilities (facilityID),
+  FOREIGN KEY (reportID) REFERENCES reports (reportID),
+  FOREIGN KEY (adminID) REFERENCES admins (userID)
+);
+
+CREATE TABLE likes (
+  studentID BIGINT UNSIGNED NOT NULL,
+  reportID BIGINT UNSIGNED NOT NULL,
+  PRIMARY KEY (studentID, reportID),
+  FOREIGN KEY (studentID) REFERENCES students (userID),
+  FOREIGN KEY (reportID) REFERENCES reports (reportID)
+);
+
+CREATE TABLE favorites (
+  studentID BIGINT UNSIGNED NOT NULL,
+  facilityID BIGINT UNSIGNED NOT NULL,
+  PRIMARY KEY (studentID, facilityID),
+  FOREIGN KEY (studentID) REFERENCES students (userID),
+  FOREIGN KEY (facilityID) REFERENCES facilities (facilityID)
+);
+
+-- Notification ISA Review_notification, New_notification: disjoint, total.
+-- A notificationID is inserted into exactly one subclass table.
+CREATE TABLE notifications (
+  notificationID BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  notification_create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE review_notifications (
+  notificationID BIGINT UNSIGNED PRIMARY KEY,
+  reportID BIGINT UNSIGNED NOT NULL,
+  studentID BIGINT UNSIGNED NOT NULL,
+  review_is_read BOOLEAN NOT NULL DEFAULT FALSE,
+  UNIQUE (reportID),
+  FOREIGN KEY (notificationID) REFERENCES notifications (notificationID),
+  FOREIGN KEY (reportID) REFERENCES reports (reportID),
+  FOREIGN KEY (studentID) REFERENCES students (userID)
+);
+
+CREATE TABLE new_notifications (
+  notificationID BIGINT UNSIGNED PRIMARY KEY,
+  reportID BIGINT UNSIGNED NOT NULL,
+  adminID BIGINT UNSIGNED NOT NULL,
+  new_is_read BOOLEAN NOT NULL DEFAULT FALSE,
+  UNIQUE (reportID, adminID),
+  FOREIGN KEY (notificationID) REFERENCES notifications (notificationID),
   FOREIGN KEY (reportID) REFERENCES reports (reportID),
   FOREIGN KEY (adminID) REFERENCES admins (userID)
 );

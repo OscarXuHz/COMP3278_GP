@@ -5,21 +5,40 @@ INSERT INTO users (userID, user_name, email, user_password) VALUES
   (2, 'student2', 'student2@connect.hku.hk', 'student2'),
   (3, 'student3', 'student3@connect.hku.hk', 'student3'),
   (4, 'admin1', 'admin1@connect.hku.hk', 'admin1'),
-  (5, 'admin2', 'admin2@connect.hku.hk', 'admin2');
+  (5, 'admin2', 'admin2@connect.hku.hk', 'admin2'),
+  (6, 'student4', 'student4@connect.hku.hk', 'student4'),
+  (7, 'student5', 'student5@connect.hku.hk', 'student5'),
+  (8, 'student6', 'student6@connect.hku.hk', 'student6'),
+  (9, 'admin3', 'admin3@connect.hku.hk', 'admin3'),
+  (10, 'admin4', 'admin4@connect.hku.hk', 'admin4');
 
 INSERT INTO students (userID) VALUES
   (1),
   (2),
-  (3);
+  (3),
+  (6),
+  (7),
+  (8);
 
 INSERT INTO admins (userID) VALUES
   (4),
-  (5);
+  (5),
+  (9),
+  (10);
 
 INSERT INTO buildings (buildingID, build_name, campus, map_x, map_y) VALUES
-  (26, 'Main Library', 'Main Campus', 278, 430),
-  (8, 'Chong Yuet Ming Amenities Centre', 'Main Campus', 142, 363),
-  (38, 'Chi Wah Learning Commons', 'Centennial Campus', 534, 440);
+  ('8', 'Chong Yuet Ming Amenities Centre', 'Main Campus', 142, 363),
+  ('10a', 'Chong Yuet Ming Chemistry Building', 'Main Campus', 67, 390),
+  ('13', 'T.T. Tsui Building', 'Main Campus', 129, 480),
+  ('15', 'K.K. Leung Building', 'Main Campus', 164, 416),
+  ('19', 'Rayson Huang Theatre', 'Main Campus', 228, 343),
+  ('20', 'Runme Shaw Building', 'Main Campus', 202, 342),
+  ('26', 'Main Library', 'Main Campus', 278, 430),
+  ('32', 'Haking Wong Building', 'Main Campus', 402, 393),
+  ('33', 'Composite Building', 'Main Campus', 454, 409),
+  ('35', 'The Jockey Club Tower', 'Centennial Campus', 559, 416),
+  ('36', 'Cheng Yu Tung Tower', 'Centennial Campus', 644, 425),
+  ('38', 'Chi Wah Learning Commons', 'Centennial Campus', 534, 440);
 
 INSERT INTO categories (categoryID, category_name) VALUES
   (1, 'Printer'),
@@ -29,57 +48,250 @@ INSERT INTO categories (categoryID, category_name) VALUES
 INSERT INTO facilities (
   facilityID, buildingID, categoryID, floor, facility_status
 ) VALUES
-  (1, 26, 1, '1F', 'Available'),
-  (2, 8, 2, '3F', 'Available'),
-  (3, 38, 3, '2F', 'Unavailable');
+  (1, '26', 1, '1/F', 'Available'),
+  (2, '8', 2, '3/F', 'Available'),
+  (3, '38', 3, '2/F', 'Unavailable'),
+  (4, '36', 2, '1/F', 'Available'),
+  (5, '26', 2, '1/F', 'Available'),
+  (6, '26', 2, '2/F', 'Available'),
+  (7, '26', 2, '4/F', 'Available'),
+  (8, '26', 2, '6/F', 'Available'),
+  (9, '38', 2, '1/F', 'Available'),
+  (10, '38', 2, '2/F', 'Available'),
+  (11, '13', 2, '3/F', 'Available'),
+  (12, '8', 3, 'G/F', 'Available'),
+  (13, '26', 1, '2/F', 'Available'),
+  (14, '38', 1, '1/F', 'Available'),
+  (15, '36', 1, 'Floor unspecified', 'Available'),
+  (16, '32', 2, '3/F', 'Available'),
+  (17, '8', 3, '1/F', 'Available'),
+  (18, '8', 3, '3/F', 'Available'),
+  (19, '10a', 2, '1/F', 'Available'),
+  (20, '19', 3, 'G/F', 'Available'),
+  (21, '20', 3, 'G/F', 'Unavailable'),
+  (22, '26', 2, '3/F', 'Available'),
+  (23, '26', 3, '1/F', 'Available'),
+  (24, '26', 3, '2/F', 'Available'),
+  (25, '26', 3, '3/F', 'Unavailable'),
+  (26, '26', 3, '4/F', 'Available'),
+  (27, '33', 3, 'G/F', 'Available'),
+  (28, '35', 3, 'LG1/F', 'Available'),
+  (29, '35', 2, 'LG1/F', 'Available'),
+  (30, '36', 3, 'LG1/F', 'Available'),
+  (31, '38', 3, '1/F', 'Available'),
+  (32, '15', 3, 'LG1/F', 'Available'),
+  (33, '26', 1, '3/F', 'Available'),
+  (34, '32', 3, '3/F', 'Available');
+
+UPDATE facilities SET archived = TRUE WHERE facilityID = 32;
 
 INSERT INTO reports (
-  reportID, facilityID, studentID, adminID, proposed_status, review_status
+  reportID, facilityID, studentID, adminID, proposed_status, review_status,
+  create_note, review_note, review_time, report_create_time
 ) VALUES
-  (1, 1, 1, NULL, 'Unavailable', 'Pending'),
-  (2, 2, 2, NULL, 'Unavailable', 'Pending'),
-  (3, 3, 3, NULL, 'Available', 'Pending'),
-  (4, 1, 2, 4, 'Available', 'Approved'),
-  (5, 3, 3, 5, 'Unavailable', 'Approved');
+  (1, 1, 1, NULL, 'Unavailable', 'Expired',
+    'Printer is out of paper', NULL, NULL, '2026-03-01 09:00:00'),
+  (2, 2, 6, NULL, 'Unavailable', 'Pending',
+    NULL, NULL, NULL, '2026-03-02 10:15:00'),
+  (3, 3, 7, NULL, 'Available', 'Expired',
+    'Toilet on 2/F is open again', NULL, NULL, '2026-03-03 14:00:00'),
+  (4, 1, 2, 4, 'Available', 'Approved',
+    'Printer works now', 'Checked on site', '2026-03-04 15:30:00', '2026-03-04 11:00:00'),
+  (5, 3, 8, 5, 'Unavailable', 'Approved',
+    NULL, NULL, '2026-03-05 18:00:00', '2026-03-05 16:20:00'),
+  (6, 25, 6, 5, 'Unavailable', 'Approved',
+    '3/F toilet is closed', 'Confirmed closed', '2026-03-06 12:00:00', '2026-03-06 09:00:00'),
+  (7, 23, 2, 4, 'Unavailable', 'Rejected',
+    '1/F toilet is out of order', 'It is open', '2026-03-07 15:00:00', '2026-03-07 11:00:00'),
+  (8, 19, 7, NULL, 'Unavailable', 'Pending',
+    'Water dispenser is empty', NULL, NULL, '2026-03-08 08:30:00'),
+  (9, 30, 8, NULL, 'Unavailable', 'Pending',
+    'LG1/F toilet is locked', NULL, NULL, '2026-03-09 13:20:00'),
+  (10, 1, 3, NULL, 'Unavailable', 'Pending',
+    'Printer on 1/F is still out of paper', NULL, NULL, '2026-03-10 09:30:00'),
+  (11, 1, 1, NULL, 'Unavailable', 'Pending',
+    'Printer on 1/F is out of paper again', NULL, NULL, '2026-03-08 14:00:00'),
+  (12, 20, 7, NULL, 'Unavailable', 'Pending',
+    'G/F toilet is out of order', NULL, NULL, '2026-03-10 15:00:00');
+
+INSERT INTO report_photos (reportID, photo) VALUES
+  (1, 'report1-paper.jpg'),
+  (1, 'report1-screen.jpg'),
+  (4, 'report4-printer.jpg'),
+  (6, 'report6-toilet.jpg'),
+  (9, 'report9-door.jpg');
 
 INSERT INTO revisions (
-  revisionID, reportID, adminID, old_status, new_status
+  revisionID, facilityID, reportID, adminID, old_status, new_status, revision_create_time
 ) VALUES
-  (1, 4, 4, 'Unavailable', 'Available'),
-  (2, 5, 5, 'Available', 'Unavailable');
+  (1, 1, 4, 4, 'Unavailable', 'Available', '2026-03-04 15:30:00'),
+  (2, 3, 5, 5, 'Available', 'Unavailable', '2026-03-05 18:00:00'),
+  (3, 25, 6, 5, 'Available', 'Unavailable', '2026-03-06 12:00:00'),
+  (4, 2, NULL, 5, 'Unavailable', 'Available', '2026-03-02 08:00:00'),
+  (5, 25, NULL, 4, 'Unavailable', 'Available', '2026-03-05 09:00:00'),
+  (6, 21, NULL, 4, 'Available', 'Unavailable', '2026-03-06 10:00:00');
 
--- RIC Campus Map demo/data/pois.seed.json; building anchors from buildings.json (map 25.2).
--- Unknown availability and unreported floors are preserved. Printing records may denote service locations.
-START TRANSACTION;
-INSERT INTO buildings (buildingID, build_name, campus, map_x, map_y) VALUES (36, 'Cheng Yu Tung Tower', 'Centennial Campus', 644, 425);
-INSERT INTO buildings (buildingID, build_name, campus, map_x, map_y) VALUES (13, 'T.T. Tsui Building', 'Main Campus', 129, 480);
-INSERT INTO buildings (buildingID, build_name, campus, map_x, map_y) VALUES (32, 'Haking Wong Building', 'Main Campus', 402, 393);
--- water-law-1f
-INSERT INTO facilities (facilityID, buildingID, categoryID, floor, facility_status) VALUES (1001, 36, 2, '1/F', 'Unknown');
--- water-main-1f
-INSERT INTO facilities (facilityID, buildingID, categoryID, floor, facility_status) VALUES (1002, 26, 2, '1/F', 'Unknown');
--- water-main-2f
-INSERT INTO facilities (facilityID, buildingID, categoryID, floor, facility_status) VALUES (1003, 26, 2, '2/F', 'Unknown');
--- water-main-4f
-INSERT INTO facilities (facilityID, buildingID, categoryID, floor, facility_status) VALUES (1004, 26, 2, '4/F', 'Unknown');
--- water-main-6f
-INSERT INTO facilities (facilityID, buildingID, categoryID, floor, facility_status) VALUES (1005, 26, 2, '6/F', 'Unknown');
--- water-chiwah-1f
-INSERT INTO facilities (facilityID, buildingID, categoryID, floor, facility_status) VALUES (1006, 38, 2, '1/F', 'Unknown');
--- water-chiwah-2f
-INSERT INTO facilities (facilityID, buildingID, categoryID, floor, facility_status) VALUES (1007, 38, 2, '2/F', 'Unknown');
--- water-tttsui-3f
-INSERT INTO facilities (facilityID, buildingID, categoryID, floor, facility_status) VALUES (1008, 13, 2, '3/F', 'Unknown');
--- water-cym-studio303
-INSERT INTO facilities (facilityID, buildingID, categoryID, floor, facility_status) VALUES (1009, 8, 2, 'Floor unspecified', 'Unknown');
--- print-main-library
-INSERT INTO facilities (facilityID, buildingID, categoryID, floor, facility_status) VALUES (1010, 26, 1, 'Floor unspecified', 'Unknown');
--- print-chi-wah
-INSERT INTO facilities (facilityID, buildingID, categoryID, floor, facility_status) VALUES (1011, 38, 1, 'Floor unspecified', 'Unknown');
--- print-law-library
-INSERT INTO facilities (facilityID, buildingID, categoryID, floor, facility_status) VALUES (1012, 36, 1, 'Floor unspecified', 'Unknown');
--- print-haking-311
-INSERT INTO facilities (facilityID, buildingID, categoryID, floor, facility_status) VALUES (1013, 32, 1, 'Floor unspecified', 'Unknown');
--- print-haking-312
-INSERT INTO facilities (facilityID, buildingID, categoryID, floor, facility_status) VALUES (1014, 32, 1, 'Floor unspecified', 'Unknown');
-COMMIT;
+INSERT INTO likes (studentID, reportID) VALUES
+  (2, 1),
+  (3, 1),
+  (2, 3),
+  (1, 4),
+  (2, 4),
+  (3, 4),
+  (1, 5),
+  (2, 6),
+  (3, 6),
+  (1, 7),
+  (3, 8),
+  (2, 9),
+  (6, 3),
+  (6, 10),
+  (7, 1),
+  (8, 6),
+  (8, 9);
+
+INSERT INTO favorites (studentID, facilityID) VALUES
+  (1, 1),
+  (1, 3),
+  (1, 13),
+  (1, 14),
+  (1, 16),
+  (1, 25),
+  (1, 30),
+  (1, 32),
+  (2, 1),
+  (2, 5),
+  (2, 12),
+  (2, 19),
+  (2, 20),
+  (2, 21),
+  (2, 25),
+  (2, 28),
+  (2, 33),
+  (3, 2),
+  (3, 4),
+  (3, 9),
+  (3, 11),
+  (3, 14),
+  (3, 15),
+  (3, 27),
+  (3, 34),
+  (6, 6),
+  (6, 22),
+  (6, 26),
+  (7, 7),
+  (7, 10),
+  (7, 31),
+  (8, 18),
+  (8, 29),
+  (8, 34);
+
+INSERT INTO notifications (notificationID, notification_create_time) VALUES
+  (1, '2026-03-01 09:01:00'),
+  (2, '2026-03-01 09:01:00'),
+  (3, '2026-03-02 10:16:00'),
+  (4, '2026-03-02 10:16:00'),
+  (5, '2026-03-03 14:01:00'),
+  (6, '2026-03-03 14:01:00'),
+  (7, '2026-03-04 11:01:00'),
+  (8, '2026-03-04 11:01:00'),
+  (9, '2026-03-05 16:21:00'),
+  (10, '2026-03-05 16:21:00'),
+  (11, '2026-03-04 15:30:00'),
+  (12, '2026-03-05 18:00:00'),
+  (13, '2026-03-06 09:01:00'),
+  (14, '2026-03-06 09:01:00'),
+  (15, '2026-03-07 11:01:00'),
+  (16, '2026-03-07 11:01:00'),
+  (17, '2026-03-08 08:31:00'),
+  (18, '2026-03-08 08:31:00'),
+  (19, '2026-03-09 13:21:00'),
+  (20, '2026-03-09 13:21:00'),
+  (21, '2026-03-06 12:00:00'),
+  (22, '2026-03-07 15:00:00'),
+  (23, '2026-03-10 09:31:00'),
+  (24, '2026-03-10 09:31:00'),
+  (25, '2026-03-01 09:01:00'),
+  (26, '2026-03-01 09:01:00'),
+  (27, '2026-03-02 10:16:00'),
+  (28, '2026-03-02 10:16:00'),
+  (29, '2026-03-03 14:01:00'),
+  (30, '2026-03-03 14:01:00'),
+  (31, '2026-03-04 11:01:00'),
+  (32, '2026-03-04 11:01:00'),
+  (33, '2026-03-05 16:21:00'),
+  (34, '2026-03-05 16:21:00'),
+  (35, '2026-03-06 09:01:00'),
+  (36, '2026-03-06 09:01:00'),
+  (37, '2026-03-07 11:01:00'),
+  (38, '2026-03-07 11:01:00'),
+  (39, '2026-03-08 08:31:00'),
+  (40, '2026-03-08 08:31:00'),
+  (41, '2026-03-09 13:21:00'),
+  (42, '2026-03-09 13:21:00'),
+  (43, '2026-03-10 09:31:00'),
+  (44, '2026-03-10 09:31:00'),
+  (45, '2026-03-08 14:01:00'),
+  (46, '2026-03-08 14:01:00'),
+  (47, '2026-03-08 14:01:00'),
+  (48, '2026-03-08 14:01:00'),
+  (49, '2026-03-10 15:01:00'),
+  (50, '2026-03-10 15:01:00'),
+  (51, '2026-03-10 15:01:00'),
+  (52, '2026-03-10 15:01:00');
+
+INSERT INTO new_notifications (notificationID, reportID, adminID, new_is_read) VALUES
+  (1, 1, 4, TRUE),
+  (2, 1, 5, TRUE),
+  (3, 2, 4, TRUE),
+  (4, 2, 5, FALSE),
+  (5, 3, 4, TRUE),
+  (6, 3, 5, TRUE),
+  (7, 4, 4, TRUE),
+  (8, 4, 5, TRUE),
+  (9, 5, 4, TRUE),
+  (10, 5, 5, TRUE),
+  (13, 6, 4, TRUE),
+  (14, 6, 5, TRUE),
+  (15, 7, 4, TRUE),
+  (16, 7, 5, TRUE),
+  (17, 8, 4, FALSE),
+  (18, 8, 5, FALSE),
+  (19, 9, 4, FALSE),
+  (20, 9, 5, FALSE),
+  (23, 10, 4, FALSE),
+  (24, 10, 5, FALSE),
+  (25, 1, 9, TRUE),
+  (26, 1, 10, TRUE),
+  (27, 2, 9, TRUE),
+  (28, 2, 10, FALSE),
+  (29, 3, 9, TRUE),
+  (30, 3, 10, TRUE),
+  (31, 4, 9, TRUE),
+  (32, 4, 10, TRUE),
+  (33, 5, 9, TRUE),
+  (34, 5, 10, TRUE),
+  (35, 6, 9, TRUE),
+  (36, 6, 10, TRUE),
+  (37, 7, 9, TRUE),
+  (38, 7, 10, TRUE),
+  (39, 8, 9, FALSE),
+  (40, 8, 10, FALSE),
+  (41, 9, 9, FALSE),
+  (42, 9, 10, FALSE),
+  (43, 10, 9, FALSE),
+  (44, 10, 10, FALSE),
+  (45, 11, 4, FALSE),
+  (46, 11, 5, FALSE),
+  (47, 11, 9, FALSE),
+  (48, 11, 10, FALSE),
+  (49, 12, 4, FALSE),
+  (50, 12, 5, FALSE),
+  (51, 12, 9, FALSE),
+  (52, 12, 10, FALSE);
+
+INSERT INTO review_notifications (notificationID, reportID, studentID, review_is_read) VALUES
+  (11, 4, 2, FALSE),
+  (12, 5, 8, TRUE),
+  (21, 6, 6, FALSE),
+  (22, 7, 2, TRUE);

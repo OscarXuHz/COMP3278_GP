@@ -147,7 +147,7 @@ function render() {
     title.className = 'facility-title';
     title.textContent = data.categories.find(item => item.categoryID === facility.categoryID).category_name;
     const status = document.createElement('span');
-    const statusClass = {Available: 'available', Unavailable: 'unavailable', Unknown: 'unknown'};
+    const statusClass = {Available: 'available', Unavailable: 'unavailable'};
     status.className = 'status ' + (statusClass[facility.facility_status] || 'unknown');
     status.textContent = facility.facility_status;
     const location = document.createElement('span');

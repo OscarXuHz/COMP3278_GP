@@ -10,7 +10,7 @@ app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_bytes(32)
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 
-STATUSES = ("Available", "Unavailable", "Unknown")
+STATUSES = ("Available", "Unavailable")
 
 
 def connect():
@@ -96,7 +96,7 @@ def save_facility(facility_id=None):
     data = request.get_json()
     floor = str(data.get("floor") or "").strip()
     status = data.get("facility_status")
-    if not 1 <= len(floor) <= 20 or status not in ("Available", "Unavailable", "Unknown"):
+    if not 1 <= len(floor) <= 20 or status not in STATUSES:
         abort(400)
     values = (data.get("buildingID"), data.get("categoryID"), floor, status)
     try:
