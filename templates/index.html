@@ -3,87 +3,264 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#f6f6f4">
-  <title>Campus Atlas</title>
+  <meta name="theme-color" content="#124734">
+  <title>Campus Atlas — HKU Facilities</title>
   <link rel="stylesheet" href="/vendor/leaflet.css">
   <link rel="stylesheet" href="/campus.css">
 </head>
-<body>
+<body data-page="{{ 'admin' if admin_page else ('student' if student_page else 'public') }}">
   <main>
     <aside aria-label="Facility browser">
       <header class="header">
-        <div><a class="brand" href="/">Campus Atlas<span aria-hidden="true">.</span></a><p class="location">HKU / Main Campus</p></div>
-        {% if admin_page or student_page %}<a class="back-link" href="/" aria-label="Back to campus map" title="Back to campus map">↗</a>{% endif %}
+        <a class="brand" href="/">
+          <span class="brand-dot" aria-hidden="true"></span>
+          <span class="brand-name">Campus Atlas</span>
+        </a>
+        <nav class="role-tabs" aria-label="Portal mode">
+          <a href="/" class="{{ 'is-active' if not admin_page and not student_page else '' }}">Explore</a>
+          <a href="/student" class="{{ 'is-active' if student_page else '' }}">Student</a>
+          <a href="/admin" class="{{ 'is-active' if admin_page else '' }}">Admin</a>
+        </nav>
       </header>
-      {% if not admin_page and not student_page %}
-      <nav class="entry-links" aria-label="Sign in">
-        <a href="/student"><strong>Student</strong><span>Submit a report and follow its review.</span></a>
-        <a href="/admin"><strong>Admin</strong><span>Review reports and trace facility history.</span></a>
-      </nav>
-      {% endif %}
-      {% if admin_page or student_page %}
-      <div class="management">
-        <form id="login" class="sign-in" hidden>
-          <input type="hidden" name="role" value="{{ 'student' if student_page else 'admin' }}">
-          <div class="sign-in-copy">
-            <p class="role-kicker">{{ 'Student' if student_page else 'Admin' }}</p>
-            <h2>{{ 'Sign in to report' if student_page else 'Sign in to review' }}</h2>
-            <p class="role-note">{{ 'Submit a facility report and follow its review.' if student_page else 'Review reports, update facilities, and trace revisions.' }}</p>
+
+      <div id="role-warning" class="role-warning" hidden></div>
+
+      <div id="mode-tabs" class="mode-tabs" role="tablist" aria-label="Workspace view" hidden>
+        <button id="tab-facilities" type="button" role="tab" aria-selected="true">
+          <span>Facilities</span>
+          <span id="tab-facilities-count" class="tab-badge">0</span>
+        </button>
+        <button id="tab-reports" type="button" role="tab" aria-selected="false">
+          <span id="tab-reports-label">Reports</span>
+          <span id="tab-reports-count" class="tab-badge">0</span>
+        </button>
+        <button id="tab-notices" type="button" role="tab" aria-selected="false">
+          <span>Notices</span>
+          <span id="tab-notices-count" class="tab-badge">0</span>
+        </button>
+      </div>
+
+      <div id="facility-filters" class="filters">
+        <div class="search-row">
+          <div class="search-field">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input id="search" type="search" placeholder="Search facilities, buildings, floors..." autocomplete="off">
           </div>
-          <label>Email<input name="email" type="email" autocomplete="username" required></label>
-          <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
-          <button class="primary">{{ 'Student sign in' if student_page else 'Admin sign in' }}</button>
-        </form>
-        <div class="admin-actions">{% if admin_page %}<button id="add" class="primary" hidden>+ Add facility</button>{% endif %}<button id="account" class="text-button" hidden>Sign out</button></div>
-      </div>
-      {% endif %}
-      <div class="filters">
-        <label for="building" class="sr-only">Building</label>
-        <div class="building-field"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M6 21V4h12v17M9 8h1m4 0h1M9 12h1m4 0h1M10 21v-5h4v5"/></svg><select id="building"></select></div>
+          <div class="building-field">
+            <select id="building" aria-label="Filter by building"></select>
+            <svg class="chevron-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
+        </div>
         <div id="categories" class="categories" role="group" aria-label="Facility category"></div>
+        <div class="chips-bar">
+          <div id="status-filters" class="status-chips" role="group" aria-label="Availability filter"></div>
+          <button id="reset" class="reset-link" type="button" hidden>Clear all</button>
+        </div>
       </div>
-      <p id="message" role="alert"></p>
-      <div class="results-heading"><h1><span id="list-label">Facilities</span> <span id="count" aria-live="polite">…</span></h1><div class="heading-actions"><button id="show-reports" class="text-button" hidden>Reports</button><button id="reset" class="text-button">Reset</button></div></div>
+
+      <div id="report-filters" class="filters" hidden>
+        <div id="report-facility-banner" class="context-banner" hidden></div>
+        <div class="search-field">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="report-search" type="search" placeholder="Search reports or #ID..." autocomplete="off">
+        </div>
+        <div id="report-status-filters" class="status-chips" role="group" aria-label="Review status filter"></div>
+      </div>
+
+      <p id="message" class="banner-error" role="alert"></p>
+
+      <div id="results-heading" class="results-heading">
+        <h1><span id="list-label">Facilities</span> <span id="count" aria-live="polite">…</span></h1>
+        <div class="results-heading-right">
+          <span id="list-sub" class="results-sub"></span>
+          {% if admin_page %}
+          <button id="add" class="compact-btn primary" type="button" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            <span>Add facility</span>
+          </button>
+          {% endif %}
+          <button id="mark-all-read" class="ghost-btn compact-btn" type="button" hidden>Mark all read</button>
+        </div>
+      </div>
+
       <section id="items" aria-label="Facilities"></section>
+      <div id="session-bar" class="session-bar" hidden></div>
       <button id="resize" class="resize-handle" type="button" aria-label="Resize panel"></button>
     </aside>
+
     <section class="map-panel" aria-label="Campus map">
       <div id="map"></div>
-      <button id="full-map" class="map-button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3H3v6m12-6h6v6M3 15v6h6m12-6v6h-6"/></svg>Full map</button>
+      <div class="map-controls">
+        <button id="fit-buildings" class="map-button" type="button" title="Center on campus buildings">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg>
+          <span>Center</span>
+        </button>
+        <button id="full-map" class="map-button" type="button" title="Show full HKU campus map">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3H3v6m12-6h6v6M3 15v6h6m12-6v6h-6"/></svg>
+          <span>Full map</span>
+        </button>
+      </div>
+      <div class="map-legend" aria-label="Pin status legend">
+        <span class="legend-item"><i class="dot available"></i>Available</span>
+        <span class="legend-item"><i class="dot unavailable"></i>Unavailable</span>
+      </div>
     </section>
   </main>
-  {% if student_page %}
-  <dialog id="report-dialog" aria-labelledby="report-title">
-    <form id="report-form">
-      <h2 id="report-title">Report facility</h2>
-      <p id="report-summary" class="report-summary"></p>
-      <p id="report-message" role="alert"></p>
-      <label>Proposed status<select name="proposed_status"><option>Available</option><option>Unavailable</option></select></label>
-      <div class="actions"><button type="button" id="report-cancel">Cancel</button><button class="primary">Submit report</button></div>
+
+  {% if admin_page or student_page %}
+  <dialog id="login-dialog" aria-labelledby="login-title">
+    <form id="login" class="modal-form">
+      <div class="modal-header">
+        <div>
+          <p class="role-kicker">{{ 'Student Portal' if student_page else 'Administrator Portal' }}</p>
+          <h2 id="login-title">{{ 'Sign in to report' if student_page else 'Sign in to review' }}</h2>
+        </div>
+        <button type="button" id="login-close" class="icon-close" aria-label="Close sign in dialog">×</button>
+      </div>
+      <p class="modal-note">{{ 'Submit facility updates, attach photos, save favorites, and follow review progress.' if student_page else 'Review reports, manage campus facilities, and inspect audit revisions.' }}</p>
+      <input type="hidden" name="role" value="{{ 'student' if student_page else 'admin' }}">
+      <p id="login-message" class="form-error" role="alert"></p>
+      <label>HKU Email<input name="email" type="email" autocomplete="username" placeholder="{{ 'student1@connect.hku.hk' if student_page else 'admin1@connect.hku.hk' }}" required></label>
+      <label>Password<input name="password" type="password" autocomplete="current-password" placeholder="Enter password" required></label>
+      <div class="demo-accounts">
+        <span class="demo-label">Quick fill demo:</span>
+        <div class="demo-chips" id="demo-chips"></div>
+      </div>
+      <div class="actions">
+        <button type="button" id="login-cancel" class="secondary-btn">Browse as guest</button>
+        <button class="primary">{{ 'Student sign in' if student_page else 'Admin sign in' }}</button>
+      </div>
     </form>
   </dialog>
   {% endif %}
+
+  {% if student_page %}
+  <dialog id="report-dialog" aria-labelledby="report-title">
+    <form id="report-form" class="modal-form">
+      <div class="modal-header">
+        <div>
+          <p class="role-kicker">Status Report</p>
+          <h2 id="report-title">Report facility status</h2>
+        </div>
+        <button type="button" id="report-close" class="icon-close" aria-label="Close report dialog">×</button>
+      </div>
+      <div id="report-summary" class="summary-card"></div>
+      <p id="report-message" class="form-error" role="alert"></p>
+      <fieldset class="status-picker">
+        <legend>What is the current status?</legend>
+        <div class="status-options">
+          <label class="status-option">
+            <input type="radio" name="proposed_status" value="Available">
+            <span class="status-option-card">
+              <span class="status available">Available</span>
+              <span class="status-desc">Working properly and accessible</span>
+            </span>
+          </label>
+          <label class="status-option">
+            <input type="radio" name="proposed_status" value="Unavailable">
+            <span class="status-option-card">
+              <span class="status unavailable">Unavailable</span>
+              <span class="status-desc">Out of service, empty, or locked</span>
+            </span>
+          </label>
+        </div>
+      </fieldset>
+      <label>Notes <span class="muted-inline">(optional)</span><textarea name="create_note" maxlength="8000" rows="2" placeholder="e.g. out of paper, water tank empty, door locked..."></textarea></label>
+      <div class="file-field">
+        <span class="file-field-label">Photos <span id="photo-count-hint" class="muted-inline">(optional, up to 6)</span></span>
+        <label class="file-dropzone">
+          <input id="report-photos" type="file" name="photos" accept="image/jpeg,image/png,image/webp" multiple>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="m21 15-5-5L5 19"/></svg>
+          <span>Choose JPEG, PNG, or WebP photos</span>
+        </label>
+        <div id="photo-preview-row" class="photo-preview-row" hidden></div>
+      </div>
+      <div class="actions">
+        <button type="button" id="report-cancel" class="secondary-btn">Cancel</button>
+        <button class="primary">Submit report</button>
+      </div>
+    </form>
+  </dialog>
+  {% endif %}
+
   {% if admin_page %}
   <dialog id="facility-dialog" aria-labelledby="editor-title">
-    <form id="editor">
-      <h2 id="editor-title">Add facility</h2>
-      <p id="editor-message" role="alert"></p>
+    <form id="editor" class="modal-form">
+      <div class="modal-header">
+        <div>
+          <p class="role-kicker">Facility Management</p>
+          <h2 id="editor-title">Add facility</h2>
+        </div>
+        <button type="button" id="editor-close" class="icon-close" aria-label="Close facility dialog">×</button>
+      </div>
+      <p id="editor-message" class="form-error" role="alert"></p>
       <label>Building<select name="buildingID" required></select></label>
       <label>Category<select name="categoryID" required></select></label>
       <div class="form-row">
-        <label>Floor<input name="floor" maxlength="20" required></label>
+        <label>Floor<input name="floor" maxlength="20" placeholder="e.g. 1/F, G/F" required></label>
         <label>Status<select name="facility_status"><option>Available</option><option>Unavailable</option></select></label>
       </div>
-      <div class="actions"><button type="button" id="cancel">Cancel</button><button class="primary">Save changes</button></div>
+      <div class="actions">
+        <button type="button" id="cancel" class="secondary-btn">Cancel</button>
+        <button class="primary">Save facility</button>
+      </div>
     </form>
   </dialog>
+
   <dialog id="history-dialog" aria-labelledby="history-title">
-    <h2 id="history-title">Revision history</h2>
-    <p id="history-summary" class="report-summary"></p>
-    <div id="history-list"></div>
-    <div class="actions"><button type="button" id="history-close">Close</button></div>
+    <div class="modal-form">
+      <div class="modal-header">
+        <div>
+          <p class="role-kicker">Audit Log</p>
+          <h2 id="history-title">Revision history</h2>
+        </div>
+        <button type="button" id="history-x" class="icon-close" aria-label="Close history dialog">×</button>
+      </div>
+      <div id="history-summary" class="summary-card"></div>
+      <div id="history-list" class="timeline"></div>
+      <div class="actions">
+        <button type="button" id="history-close" class="secondary-btn">Close</button>
+      </div>
+    </div>
   </dialog>
   {% endif %}
+
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title">
+    <div class="modal-form">
+      <div class="modal-header">
+        <div>
+          <p class="role-kicker" id="confirm-kicker">Confirm Action</p>
+          <h2 id="confirm-title">Are you sure?</h2>
+        </div>
+        <button type="button" id="confirm-x" class="icon-close" aria-label="Close confirmation dialog">×</button>
+      </div>
+      <div id="confirm-summary" class="summary-card" hidden></div>
+      <label id="review-note-field" hidden>Review note <span class="muted-inline">(optional)</span><textarea id="review-note" maxlength="8000" rows="2" placeholder="Optional note for the reporting student..."></textarea></label>
+      <p id="confirm-body" class="modal-note"></p>
+      <div class="actions">
+        <button type="button" id="confirm-cancel" class="secondary-btn">Cancel</button>
+        <button type="button" id="confirm-ok" class="primary">Confirm</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="photo-dialog" class="photo-lightbox" aria-labelledby="photo-dialog-title">
+    <div class="lightbox-inner">
+      <div class="lightbox-head">
+        <span id="photo-dialog-title" class="lightbox-title">Report photo</span>
+        <div class="lightbox-actions">
+          <a id="photo-dialog-open" class="compact-btn secondary-btn" href="#" target="_blank" rel="noopener">Open original</a>
+          <button type="button" id="photo-dialog-close" class="icon-close" aria-label="Close photo preview">×</button>
+        </div>
+      </div>
+      <div class="lightbox-stage">
+        <img id="photo-dialog-img" src="" alt="Report photo preview">
+      </div>
+    </div>
+  </dialog>
+
+  <div id="toast-stack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
+
   <script src="/vendor/leaflet.js"></script>
   <script src="/campus.js"></script>
 </body>
