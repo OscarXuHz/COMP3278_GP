@@ -1,4 +1,5 @@
 import os
+import re
 import secrets
 from pathlib import Path
 from uuid import uuid4
@@ -8,6 +9,7 @@ from PIL import Image, UnidentifiedImageError
 import pymysql
 from flask import send_from_directory, render_template, Flask, abort, g, jsonify, request, session
 from pymysql.cursors import DictCursor
+from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__, static_folder="map-preview", static_url_path="")
 app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_bytes(32)
@@ -88,12 +90,50 @@ def login():
     data = request.get_json() or {}
     role = "student" if data.get("role") == "student" else "admin"
     table = "students" if role == "student" else "admins"
-    rows = query(f"SELECT u.userID, u.user_password FROM users u JOIN {table} s USING (userID) WHERE email=%s", (data.get("email"),))
-    if not rows or rows[0]["user_password"] != data.get("password"):
+    email = data.get("email")
+    password = data.get("password")
+    if not isinstance(email, str) or not isinstance(password, str):
+        abort(401)
+    rows = query(f"SELECT u.userID, u.user_password FROM users u JOIN {table} s USING (userID) WHERE email=%s", (email.strip().lower(),))
+    if not rows:
+        abort(401)
+    stored = rows[0]["user_password"]
+    valid = check_password_hash(stored, password) if stored.startswith("pbkdf2:") else stored == password
+    if not valid:
         abort(401)
     session.clear()
     session[role] = rows[0]["userID"]
     return "", 204
+
+
+@app.post("/api/students")
+def register_student():
+    data = request.get_json()
+    email = data.get("email") if isinstance(data, dict) else None
+    email = email.strip().lower() if isinstance(email, str) else ""
+    if not re.fullmatch(r"[a-z0-9_-]+(?:\.[a-z0-9_-]+)*@(?:connect\.)?hku\.hk", email) or len(email.split("@")[0]) > 64:
+        return jsonify(error="Use your @connect.hku.hk or @hku.hk email."), 400
+    password = data.get("password")
+    if not isinstance(password, str) or not 8 <= len(password) <= 128:
+        return jsonify(error="Choose a password with 8 to 128 characters."), 400
+    password_hash = generate_password_hash(password, method="pbkdf2:sha256:600000")
+
+    def create(cursor):
+        cursor.execute("INSERT INTO users (user_name,email,user_password) VALUES (%s,%s,%s)",
+                       (email.split("@")[0], email, password_hash))
+        uid = cursor.lastrowid
+        cursor.execute("INSERT INTO students (userID) VALUES (%s)", (uid,))
+        return uid
+
+    try:
+        uid = transaction(create)
+    except pymysql.err.IntegrityError as error:
+        if error.args[0] == 1062:
+            return jsonify(error="This email is already registered. Sign in to continue."), 409
+        raise
+    session.clear()
+    session["student"] = uid
+    return jsonify(userID=uid), 201
 
 
 @app.delete("/api/session")

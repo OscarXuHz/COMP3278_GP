@@ -127,8 +127,8 @@ Set connection variables using PowerShell syntax, such as `$env:DB_USER = 'root'
 | Administrator | `admin2@connect.hku.hk` | `admin2` |
 
 - `/`: public campus map; no login required.
-- `/student`: student login, facility reports and **My reports**.
-- `/admin`: administrator login, facility management, **Mailbox** and **History**.
+- `/student`: student login, registration, facility reports and **My reports**. Choose **Create student account** to register with an `@connect.hku.hk` or `@hku.hk` address and a password of 8–128 characters. Registration checks the email domain and signs the student in immediately.
+- `/admin`: administrator login, facility management, **Reports** and **History**.
 
 These are seeded demonstration accounts. The app uses one login session per browser profile. To switch roles, sign out and sign in on the other role's page; two ordinary tabs share the same session. Separate browser profiles/private windows can be used for simultaneous student/admin demonstrations.
 
@@ -138,7 +138,7 @@ These steps change the local demo data. The counts above describe the fresh seed
 
 1. **Read:** open `/`, filter by building or category, and select a facility to locate its building.
 2. **Create a report:** sign in at `/student` as `student1`. Find the Main Library 1F printer and note its current status. Click **Report**, choose a different proposed status, and submit. Open **My reports**: the newest report should be `Pending`, while the facility retains its original status.
-3. **Approve and update:** sign out, open `/admin`, and sign in as `admin1`. Click **Mailbox** and find the new pending report by its student, building, floor and proposed status (the seed already includes pending reports). Click **Approve** and confirm. The report becomes `Approved` and the facility takes the proposed status.
+3. **Approve and update:** sign out, open `/admin`, and sign in as `admin1`. Click **Reports** and find the new pending report by its student, building, floor and proposed status (the seed already includes pending reports). Click **Approve** and confirm. The report becomes `Approved` and the facility takes the proposed status.
 4. **Check history:** return to **Facilities** and open that facility's **History**. It should show the old/new status, approving administrator, reporting student and report ID. Refresh the public map or another open browser window to see the updated facility status; other tabs do not receive live updates.
 5. **Reject:** submit another student report and reject it as an administrator. Its status becomes `Rejected`; the facility status and revision history stay unchanged.
 6. **Delete a pending report:** as a student, submit a new report and withdraw it from **My reports** before review. This deletes that student's pending row from `reports`; approved/rejected reports cannot be withdrawn.

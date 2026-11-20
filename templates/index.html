@@ -117,7 +117,6 @@
         </div>
         <button type="button" id="login-close" class="icon-close" aria-label="Close sign in dialog">×</button>
       </div>
-      <p class="modal-note">{{ 'Submit facility updates, attach photos, save favorites, and follow review progress.' if student_page else 'Review reports, manage campus facilities, and inspect audit revisions.' }}</p>
       <input type="hidden" name="role" value="{{ 'student' if student_page else 'admin' }}">
       <p id="login-message" class="form-error" role="alert"></p>
       <label>HKU Email<input name="email" type="email" autocomplete="username" placeholder="{{ 'student1@connect.hku.hk' if student_page else 'admin1@connect.hku.hk' }}" required></label>
@@ -128,8 +127,9 @@
       </div>
       <div class="actions">
         <button type="button" id="login-cancel" class="secondary-btn">Browse as guest</button>
-        <button class="primary">{{ 'Student sign in' if student_page else 'Admin sign in' }}</button>
+        <button id="login-submit" class="primary">{{ 'Student sign in' if student_page else 'Admin sign in' }}</button>
       </div>
+      {% if student_page %}<button id="signup-toggle" type="button" class="text-action">Create student account</button>{% endif %}
     </form>
   </dialog>
   {% endif %}
@@ -139,7 +139,6 @@
     <form id="report-form" class="modal-form">
       <div class="modal-header">
         <div>
-          <p class="role-kicker">Status Report</p>
           <h2 id="report-title">Report facility status</h2>
         </div>
         <button type="button" id="report-close" class="icon-close" aria-label="Close report dialog">×</button>
@@ -147,25 +146,23 @@
       <div id="report-summary" class="summary-card"></div>
       <p id="report-message" class="form-error" role="alert"></p>
       <fieldset class="status-picker">
-        <legend>What is the current status?</legend>
+        <legend>Status</legend>
         <div class="status-options">
           <label class="status-option">
             <input type="radio" name="proposed_status" value="Available">
             <span class="status-option-card">
               <span class="status available">Available</span>
-              <span class="status-desc">Working properly and accessible</span>
             </span>
           </label>
           <label class="status-option">
             <input type="radio" name="proposed_status" value="Unavailable">
             <span class="status-option-card">
               <span class="status unavailable">Unavailable</span>
-              <span class="status-desc">Out of service, empty, or locked</span>
             </span>
           </label>
         </div>
       </fieldset>
-      <label>Notes <span class="muted-inline">(optional)</span><textarea name="create_note" maxlength="8000" rows="2" placeholder="e.g. out of paper, water tank empty, door locked..."></textarea></label>
+      <label>Notes <span class="muted-inline">(optional)</span><textarea name="create_note" maxlength="8000" rows="2"></textarea></label>
       <div class="file-field">
         <span class="file-field-label">Photos <span id="photo-count-hint" class="muted-inline">(optional, up to 6)</span></span>
         <label class="file-dropzone">
@@ -188,7 +185,6 @@
     <form id="editor" class="modal-form">
       <div class="modal-header">
         <div>
-          <p class="role-kicker">Facility Management</p>
           <h2 id="editor-title">Add facility</h2>
         </div>
         <button type="button" id="editor-close" class="icon-close" aria-label="Close facility dialog">×</button>
@@ -211,7 +207,6 @@
     <div class="modal-form">
       <div class="modal-header">
         <div>
-          <p class="role-kicker">Audit Log</p>
           <h2 id="history-title">Revision history</h2>
         </div>
         <button type="button" id="history-x" class="icon-close" aria-label="Close history dialog">×</button>
@@ -235,7 +230,7 @@
         <button type="button" id="confirm-x" class="icon-close" aria-label="Close confirmation dialog">×</button>
       </div>
       <div id="confirm-summary" class="summary-card" hidden></div>
-      <label id="review-note-field" hidden>Review note <span class="muted-inline">(optional)</span><textarea id="review-note" maxlength="8000" rows="2" placeholder="Optional note for the reporting student..."></textarea></label>
+      <label id="review-note-field" hidden>Review note <span class="muted-inline">(optional)</span><textarea id="review-note" maxlength="8000" rows="2" placeholder="Visible to the reporting student"></textarea></label>
       <p id="confirm-body" class="modal-note"></p>
       <div class="actions">
         <button type="button" id="confirm-cancel" class="secondary-btn">Cancel</button>

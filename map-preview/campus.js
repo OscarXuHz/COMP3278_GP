@@ -237,6 +237,9 @@ async function api(path, method = 'GET', body) {
   }
   const response = await fetch(path, init);
   if (!response.ok) {
+    if (path === '/api/students' && (response.status === 400 || response.status === 409)) {
+      throw new Error((await response.json()).error);
+    }
     if (response.status === 413) throw new Error('Photos exceed the 20 MB upload limit.');
     if (response.status === 400 && body instanceof FormData) throw new Error('Use up to six JPEG, PNG or WebP photos, each under 20 megapixels.');
     if (response.status === 401) throw new Error('Incorrect email or password.');
@@ -447,12 +450,13 @@ function renderModeTabs() {
     return;
   }
   tabs.hidden = false;
-  el('tab-facilities').setAttribute('aria-selected', String(panel === 'facilities'));
-  el('tab-reports').setAttribute('aria-selected', String(panel === 'reports'));
+  const viewingFacilityReports = panel === 'reports' && reportFacility !== null;
+  el('tab-facilities').setAttribute('aria-selected', String(panel === 'facilities' || viewingFacilityReports));
+  el('tab-reports').setAttribute('aria-selected', String(panel === 'reports' && !viewingFacilityReports));
   el('tab-notices').setAttribute('aria-selected', String(panel === 'notifications'));
 
   el('tab-facilities-count').textContent = data.facilities.length;
-  el('tab-reports-label').textContent = data.student ? 'My reports' : 'Mailbox';
+  el('tab-reports-label').textContent = data.student ? 'My reports' : 'Reports';
 
   const pendingCount = reports.filter(r => r.review_status === 'Pending').length;
   const reportsBadge = el('tab-reports-count');
@@ -573,6 +577,8 @@ function buildPopupContent(buildingItem, buildingFacilities) {
 
   const list = h('div', {className: 'map-popup-list'});
   const sorted = [...buildingFacilities].sort((a, b) => {
+    const selectionOrder = Number(b.facilityID === selectedFacility) - Number(a.facilityID === selectedFacility);
+    if (selectionOrder) return selectionOrder;
     const catCmp = categoryName(a.categoryID).localeCompare(categoryName(b.categoryID));
     return catCmp !== 0 ? catCmp : floorRank(a.floor) - floorRank(b.floor);
   });
@@ -582,14 +588,16 @@ function buildPopupContent(buildingItem, buildingFacilities) {
   } else {
     for (const facility of sorted.slice(0, 6)) {
       const fl = cleanFloor(facility.floor);
+      const isSelected = facility.facilityID === selectedFacility;
       const itemRow = h(
         'div',
-        {className: 'map-popup-item'},
+        {className: 'map-popup-item' + (isSelected ? ' selected' : '')},
         h(
           'button',
           {
             type: 'button',
             className: 'map-popup-item-btn',
+            'aria-pressed': String(isSelected),
             onClick: () => {
               panel = 'facilities';
               selectedFacility = facility.facilityID;
@@ -663,10 +671,6 @@ function renderMarkers(filteredFacilities) {
     if (anyFilterActive && !matching.length) continue;
 
     const listForPin = anyFilterActive ? matching : allInBuilding;
-    let pinDot = 'unknown';
-    if (listForPin.some(f => f.facility_status === 'Available')) pinDot = 'available';
-    else if (listForPin.some(f => f.facility_status === 'Unavailable')) pinDot = 'unavailable';
-
     const selected = String(item.buildingID) === String(building.value);
     const shortName = SHORT_BUILDING_NAMES[item.build_name] || item.build_name;
 
@@ -674,7 +678,6 @@ function renderMarkers(filteredFacilities) {
       'div',
       {className: 'map-pin' + (selected ? ' active' : '')},
       h('span', {className: 'pin-id', textContent: item.buildingID}),
-      h('i', {className: 'dot pin-dot ' + pinDot}),
       h('span', {className: 'pin-label', textContent: shortName}),
       h('span', {className: 'pin-count', textContent: listForPin.length})
     );
@@ -1012,10 +1015,10 @@ function renderReportFilters(baseReports) {
         {
           type: 'button',
           className: 'breadcrumb-back',
-          onClick: () => openReports(null),
+          onClick: openFacilities,
         },
         makeSvg('ArrowLeft'),
-        h('span', {textContent: data.student ? 'My reports' : 'Mailbox'})
+        h('span', {textContent: 'Facilities'})
       ),
       h('span', {className: 'breadcrumb-sep', 'aria-hidden': 'true', textContent: '/'}),
       h('span', {className: 'context-banner-text', textContent: label, title: label})
@@ -1088,7 +1091,7 @@ function renderReports() {
 
   renderMarkers(data.facilities);
 
-  el('list-label').textContent = reportFacility ? 'Facility reports' : data.student ? 'My reports' : 'Mailbox';
+  el('list-label').textContent = reportFacility ? 'Facility reports' : data.student ? 'My reports' : 'Reports';
   el('count').textContent = visible.length;
   const pendingCount = visible.filter(r => r.review_status === 'Pending').length;
   el('list-sub').textContent = pendingCount ? pendingCount + ' pending' : '';
@@ -1104,7 +1107,7 @@ function renderReports() {
         {className: 'empty-state'},
         makeSvg('Empty'),
         h('strong', {textContent: 'No reports found'}),
-        h('p', {textContent: reports.length ? 'Try clearing your search or status filter.' : 'No facility reports have been submitted yet.'})
+        reports.length ? h('p', {textContent: 'Clear your search or filters.'}) : null
       )
     );
     return;
@@ -1338,12 +1341,7 @@ function renderNotifications() {
         'div',
         {className: 'empty-state'},
         makeSvg('Bell'),
-        h('strong', {textContent: 'All caught up'}),
-        h('p', {
-          textContent: data.admin
-            ? 'New student reports will appear here when submitted.'
-            : 'Review updates on your reports will appear here.',
-        })
+        h('strong', {textContent: 'No notifications'})
       )
     );
     return;
@@ -1650,13 +1648,15 @@ el('reset').onclick = () => {
   render();
 };
 
-el('tab-facilities').onclick = () => {
+function openFacilities() {
   const hadFacilityScope = reportFacility !== null;
   reportFacility = null;
   panel = 'facilities';
   if (hadFacilityScope) load().catch(error => { el('message').textContent = error.message; });
   else render();
-};
+}
+
+el('tab-facilities').onclick = openFacilities;
 
 el('tab-reports').onclick = () => openReports(null);
 
@@ -1707,6 +1707,25 @@ if (photoDialog) {
 }
 
 if (loginDialog) {
+  let registering = false;
+  const toggle = el('signup-toggle');
+  if (toggle) {
+    const password = el('login').elements.password;
+    const setMode = signup => {
+      registering = signup;
+      el('login-title').textContent = signup ? 'Create student account' : 'Sign in to report';
+      el('login-submit').textContent = signup ? 'Sign up' : 'Student sign in';
+      toggle.textContent = signup ? 'Back to sign in' : 'Create student account';
+      loginDialog.querySelector('.demo-accounts').hidden = signup;
+      password.value = '';
+      password.autocomplete = signup ? 'new-password' : 'current-password';
+      password.minLength = signup ? 8 : 0;
+      password.placeholder = signup ? '8 to 128 characters' : 'Enter password';
+      el('login-message').textContent = '';
+    };
+    toggle.onclick = () => setMode(!registering);
+    loginDialog.addEventListener('close', () => setMode(false));
+  }
   const dismissLogin = () => {
     try {
       sessionStorage.setItem('atlas-login-dismissed-' + pageMode, '1');
@@ -1723,7 +1742,7 @@ if (loginDialog) {
     try {
       sessionStorage.removeItem('atlas-login-dismissed-' + pageMode);
     } catch (_error) {}
-    update('/api/session', 'POST', payload, null, 'Signed in');
+    update(registering ? '/api/students' : '/api/session', 'POST', payload, null, registering ? 'Account created' : 'Signed in');
   };
 }
 
