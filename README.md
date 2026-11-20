@@ -33,11 +33,11 @@ All Python commands explicitly use the same environment, so activation is option
 Start your installed MySQL server using its service manager or installer controls. For the commands below, use your own MySQL username, host and port if they differ from `root`, `127.0.0.1` and `3306`.
 
 ```sh
-mysql -h 127.0.0.1 -P 3306 -u root -p < database/db/schema.sql
-mysql -h 127.0.0.1 -P 3306 -u root -p < database/db/seed.sql
+mysql -h 127.0.0.1 -P 3306 -u root -p --init-command="SET time_zone='+08:00'" < database/db/schema.sql
+mysql -h 127.0.0.1 -P 3306 -u root -p --init-command="SET time_zone='+08:00'" < database/db/seed.sql
 ```
 
-Enter your **MySQL account password** when prompted. This is separate from the web app's demo account passwords. Import `schema.sql` first, then `seed.sql`; no separate data download is required.
+Enter your **MySQL account password** when prompted. This is separate from the web app's demo account passwords. Import `schema.sql` first, then `seed.sql`; no separate data download is required. The application sets every connection to Hong Kong time (`+08:00`). `TIMESTAMP` values are stored in UTC and converted with the session time zone, so the import uses that same zone. Otherwise the clock times in `seed.sql` shift by the gap between the server zone and Hong Kong.
 
 Both scripts use the database name `campus_atlas`. Run them once against a fresh database: they are initialization scripts, not migrations. Do not rerun them over an existing project database containing work you want to keep. If tables already exist, use the existing initialized database or prepare a separate clean MySQL instance for a fresh demo.
 
@@ -46,8 +46,8 @@ Both scripts use the database name `campus_atlas`. Run them once against a fresh
 Replace `mysql` with the full path to **your installed client** in each command. For example, only if your installation uses this path:
 
 ```sh
-/usr/local/mysql/bin/mysql -h 127.0.0.1 -P 3306 -u root -p < database/db/schema.sql
-/usr/local/mysql/bin/mysql -h 127.0.0.1 -P 3306 -u root -p < database/db/seed.sql
+/usr/local/mysql/bin/mysql -h 127.0.0.1 -P 3306 -u root -p --init-command="SET time_zone='+08:00'" < database/db/schema.sql
+/usr/local/mysql/bin/mysql -h 127.0.0.1 -P 3306 -u root -p --init-command="SET time_zone='+08:00'" < database/db/seed.sql
 ```
 
 Alternatively, add the directory containing the executable to `PATH`. For the example above:
@@ -70,9 +70,9 @@ Immediately after a fresh import, expect:
 | --- | ---: |
 | Tables | 14 |
 | Users | 10 (6 students, 4 administrators) |
-| Buildings | 12 |
+| Buildings | 44 |
 | Categories | 3 |
-| Facilities | 34 (33 visible, 1 archived) |
+| Facilities | 81 (81 visible, 0 archived) |
 | Reports | 12 (5 Pending, 4 Approved, 1 Rejected, 2 Expired) |
 | Revisions | 6 |
 
@@ -110,6 +110,7 @@ Leave `DB_SOCKET` unset for the TCP setup above. If your installation requires a
 Create the environment with `py -m venv .venv` and install dependencies with `.venv\Scripts\python.exe -m pip install -r requirements.txt`. PowerShell does not support the `<` import syntax above; open the MySQL client from the repository root, then run:
 
 ```sql
+SET time_zone = '+08:00';
 SOURCE database/db/schema.sql;
 SOURCE database/db/seed.sql;
 ```
@@ -137,7 +138,7 @@ These are seeded demonstration accounts. The app uses one login session per brow
 These steps change the local demo data. The counts above describe the fresh seed, not the database after using the app.
 
 1. **Read:** open `/`, filter by building or category, and select a facility to locate its building.
-2. **Create a report:** sign in at `/student` as `student1`. Find the Main Library 1F printer and note its current status. Click **Report**, choose a different proposed status, and submit. Open **My reports**: the newest report should be `Pending`, while the facility retains its original status.
+2. **Create a report:** sign in at `/student` as `student1`. Find the Main Library G/F printer and note its current status. Click **Report**, choose a different proposed status, and submit. Open **My reports**: the newest report should be `Pending`, while the facility retains its original status.
 3. **Approve and update:** sign out, open `/admin`, and sign in as `admin1`. Click **Reports** and find the new pending report by its student, building, floor and proposed status (the seed already includes pending reports). Click **Approve** and confirm. The report becomes `Approved` and the facility takes the proposed status.
 4. **Check history:** return to **Facilities** and open that facility's **History**. It should show the old/new status, approving administrator, reporting student and report ID. Refresh the public map or another open browser window to see the updated facility status; other tabs do not receive live updates.
 5. **Reject:** submit another student report and reject it as an administrator. Its status becomes `Rejected`; the facility status and revision history stay unchanged.

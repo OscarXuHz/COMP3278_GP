@@ -667,6 +667,7 @@ function renderMarkers(filteredFacilities) {
   for (const item of data.buildings) {
     const matching = filteredFacilities.filter(f => String(f.buildingID) === String(item.buildingID));
     const allInBuilding = data.facilities.filter(f => String(f.buildingID) === String(item.buildingID));
+    if (!allInBuilding.length) continue;
     const anyFilterActive = Boolean(onlyFavorites || categoryID || statusFilter || searchQuery.trim());
     if (anyFilterActive && !matching.length) continue;
 

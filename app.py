@@ -29,6 +29,10 @@ def connect():
             password=os.getenv("DB_PASSWORD", ""), database=os.getenv("DB_NAME", "campus_atlas"),
             cursorclass=DictCursor, autocommit=True,
         )
+        # Hong Kong has no daylight saving. TIMESTAMP values are stored in UTC and
+        # converted with the session time zone, so this keeps CURRENT_TIMESTAMP in HKT.
+        with g.db.cursor() as cursor:
+            cursor.execute("SET time_zone = '+08:00'")
     return g.db
 
 

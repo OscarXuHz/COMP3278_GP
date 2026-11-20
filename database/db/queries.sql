@@ -6,6 +6,7 @@ SELECT
   b.build_name,
   c.category_name,
   f.floor,
+  f.facility_note,
   f.facility_status
 FROM facilities AS f
 JOIN buildings AS b ON b.buildingID = f.buildingID
@@ -46,6 +47,7 @@ SELECT
   b.build_name,
   c.category_name,
   f.floor,
+  f.facility_note,
   r.proposed_status,
   r.review_status,
   GROUP_CONCAT(p.photo ORDER BY p.photo SEPARATOR ', ') AS photos
@@ -60,6 +62,7 @@ GROUP BY
   b.build_name,
   c.category_name,
   f.floor,
+  f.facility_note,
   r.proposed_status,
   r.review_status;
 
@@ -80,6 +83,7 @@ SELECT
   b.build_name,
   c.category_name,
   f.floor,
+  f.facility_note,
   r.proposed_status,
   r.review_status,
   r.adminID,
@@ -98,7 +102,7 @@ ORDER BY r.report_create_time;
 SET @facility_id = NULL;
 SET @old_status = NULL;
 SET @new_status = NULL;
-SET @review_time = '2026-03-10 16:00:00';
+SET @review_time = '2026-11-19 16:00:00';
 
 START TRANSACTION;
 
@@ -176,7 +180,7 @@ ROLLBACK;
 
 -- 4. Reject report (Report ID = 2, Admin ID = 5)
 -- Rejection does not expire earlier pending reports.
-SET @review_time = '2026-03-11 09:00:00';
+SET @review_time = '2026-11-20 09:00:00';
 
 START TRANSACTION;
 
@@ -262,7 +266,7 @@ WHERE userID = 1
   );
 
 SET @report_id = LAST_INSERT_ID();
-SET @notice_time = '2026-03-12 09:00:00';
+SET @notice_time = '2026-11-21 09:00:00';
 
 INSERT INTO report_photos (reportID, photo)
 SELECT r.reportID, 'report-new-dispenser.jpg'
@@ -312,9 +316,9 @@ ROLLBACK;
 START TRANSACTION;
 
 INSERT INTO facilities (
-  buildingID, categoryID, floor, facility_status
+  buildingID, categoryID, floor, facility_note, facility_status
 )
-SELECT '26', 1, '2/F', 'Available'
+SELECT '26', 1, '2/F', 'Beside the help desk', 'Available'
 FROM admins
 WHERE userID = 4;
 
@@ -369,6 +373,7 @@ SELECT
   b.build_name,
   c.category_name,
   f.floor,
+  f.facility_note,
   f.facility_status
 FROM favorites AS fav
 JOIN facilities AS f ON f.facilityID = fav.facilityID
@@ -408,7 +413,7 @@ ORDER BY n.notification_create_time;
 
 -- 15. Admin changes facility status directly (Admin ID = 4, Facility ID = 20)
 -- Earlier pending reports on this facility expire. Later ones stay pending.
-SET @change_time = '2026-03-11 10:00:00';
+SET @change_time = '2026-11-20 10:00:00';
 
 START TRANSACTION;
 
@@ -452,6 +457,7 @@ SELECT
   b.map_y,
   c.category_name,
   f.floor,
+  f.facility_note,
   f.facility_status
 FROM facilities AS f
 JOIN buildings AS b ON b.buildingID = f.buildingID
@@ -466,6 +472,7 @@ SELECT
   b.build_name,
   c.category_name,
   f.floor,
+  f.facility_note,
   f.facility_status
 FROM facilities AS f
 JOIN buildings AS b ON b.buildingID = f.buildingID
