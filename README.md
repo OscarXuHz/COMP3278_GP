@@ -8,7 +8,7 @@ Campus Atlas is a COMP3278 database project for finding campus facilities and re
 - **Student:** sign in, submit a proposed facility status, view personal reports, and withdraw a report while it is pending.
 - **Administrator:** add, edit and archive facilities; approve or reject reports; view the history of approved status changes.
 
-Students report changes to existing facilities; they do not create buildings or facilities. Facility statuses are `Available`, `Unavailable` and `Unknown`.
+Students report changes to existing facilities; they do not create buildings or facilities. Facility statuses are `Available` and `Unavailable`.
 
 ## Requirements
 
@@ -68,15 +68,15 @@ Immediately after a fresh import, expect:
 
 | Data | Count |
 | --- | ---: |
-| Tables | 8 |
-| Users | 5 (3 students, 2 administrators) |
-| Buildings | 6 |
+| Tables | 14 |
+| Users | 10 (6 students, 4 administrators) |
+| Buildings | 12 |
 | Categories | 3 |
-| Facilities | 17 |
-| Reports | 5 (3 Pending, 2 Approved) |
-| Revisions | 2 |
+| Facilities | 34 (33 visible, 1 archived) |
+| Reports | 12 (5 Pending, 4 Approved, 1 Rejected, 2 Expired) |
+| Revisions | 6 |
 
-The seed includes demonstration records and sample facilities from the RIC Campus Map dataset. Unknown availability and unspecified floors are preserved; the data is not a live campus status feed.
+The seed includes demonstration records and sample facilities from the RIC Campus Map dataset. The seed includes sample photo filenames. Upload JPEG, PNG or WebP images to see photo previews. Uploaded images are stored under `instance/report-photos/<database>/`.
 
 ## 3. Configure and run Flask
 
@@ -128,7 +128,7 @@ Set connection variables using PowerShell syntax, such as `$env:DB_USER = 'root'
 
 - `/`: public campus map; no login required.
 - `/student`: student login, facility reports and **My reports**.
-- `/admin`: administrator login, facility management, **Reports** and **History**.
+- `/admin`: administrator login, facility management, **Mailbox** and **History**.
 
 These are seeded demonstration accounts. The app uses one login session per browser profile. To switch roles, sign out and sign in on the other role's page; two ordinary tabs share the same session. Separate browser profiles/private windows can be used for simultaneous student/admin demonstrations.
 
@@ -138,13 +138,13 @@ These steps change the local demo data. The counts above describe the fresh seed
 
 1. **Read:** open `/`, filter by building or category, and select a facility to locate its building.
 2. **Create a report:** sign in at `/student` as `student1`. Find the Main Library 1F printer and note its current status. Click **Report**, choose a different proposed status, and submit. Open **My reports**: the newest report should be `Pending`, while the facility retains its original status.
-3. **Approve and update:** sign out, open `/admin`, and sign in as `admin1`. Click **Reports** and find the new pending report by its student, building, floor and proposed status (the seed already includes pending reports). Click **Approve** and confirm. The report becomes `Approved` and the facility takes the proposed status.
+3. **Approve and update:** sign out, open `/admin`, and sign in as `admin1`. Click **Mailbox** and find the new pending report by its student, building, floor and proposed status (the seed already includes pending reports). Click **Approve** and confirm. The report becomes `Approved` and the facility takes the proposed status.
 4. **Check history:** return to **Facilities** and open that facility's **History**. It should show the old/new status, approving administrator, reporting student and report ID. Refresh the public map or another open browser window to see the updated facility status; other tabs do not receive live updates.
 5. **Reject:** submit another student report and reject it as an administrator. Its status becomes `Rejected`; the facility status and revision history stay unchanged.
 6. **Delete a pending report:** as a student, submit a new report and withdraw it from **My reports** before review. This deletes that student's pending row from `reports`; approved/rejected reports cannot be withdrawn.
 7. **Manage facilities:** as an administrator, use **+ Add facility** to create a demo facility, **Edit** to change it, and **Archive** to remove it from the public map. Archive is a soft delete (`archived=TRUE`); the row remains in MySQL.
 
-Approval runs in one transaction: lock the pending report and its facility with `SELECT ... FOR UPDATE`, update `reports`, update `facilities`, and insert a `revisions` row. A failure rolls back the transaction. Each report can have at most one revision (`UNIQUE(reportID)`). Rejection updates only the report. History currently records approved reports, not direct administrator edits or archival.
+Approval runs in one transaction: lock the pending report and its facility with `SELECT ... FOR UPDATE`, update `reports`, update `facilities`, and insert a `revisions` row. A failure rolls back the transaction. Each report can have at most one revision (`UNIQUE(reportID)`). Both decisions notify the reporting student. Approval expires older pending reports for the facility. Direct administrator status changes also appear in History.
 
 ## Project structure and database design
 
@@ -156,12 +156,12 @@ Approval runs in one transaction: lock the pending report and its facility with 
 | `map-preview/campus.js`, `map-preview/campus.css` | Browser UI and map interactions |
 | `map-preview/assets/` | Bundled HKU campus map assets |
 | `map-preview/vendor/` | Leaflet and its license |
-| `database/db/schema.sql` | Database, eight tables, keys and constraints |
+| `database/db/schema.sql` | Database, fourteen tables, keys and constraints |
 | `database/db/seed.sql` | Demo accounts, facilities, reports and revisions |
 | `database/db/queries.sql` | SQL examples; application SQL is in `app.py` |
-| `docs/er-diagram.mmd` | Mermaid ER diagram |
+| `database/ER_diagram.png` | ER diagram for the current schema |
 
-`students` and `admins` reference `users`. Each facility belongs to one building and one category. Each report references a facility and a student, with a nullable reviewing administrator. Each revision references one approved report and its administrator.
+`students` and `admins` reference `users`. Each facility belongs to one building and one category. Each report references a facility and a student, with a nullable reviewing administrator. Each revision identifies the facility and administrator. Report-driven revisions also reference the approved report.
 
 The map uses Leaflet `CRS.Simple` with an 842 × 595 image. Building IDs match the map's printed building numbers. `buildings.map_x` and `map_y` are image coordinates measured from the top-left, not latitude/longitude. Facilities use their building's position.
 
