@@ -87,8 +87,6 @@ CREATE TABLE report_photos (
   FOREIGN KEY (reportID) REFERENCES reports (reportID)
 );
 
--- reportID is null when an admin changes facility status directly.
--- When reportID is set, facilityID is the facility that report is about.
 CREATE TABLE revisions (
   revisionID BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   facilityID BIGINT UNSIGNED NOT NULL,
@@ -123,8 +121,6 @@ CREATE TABLE favorites (
   FOREIGN KEY (facilityID) REFERENCES facilities (facilityID)
 );
 
--- Notification ISA Review_notification, New_notification: disjoint, total.
--- A notificationID is inserted into exactly one subclass table.
 CREATE TABLE notifications (
   notificationID BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   notification_create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
