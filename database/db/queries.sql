@@ -98,7 +98,8 @@ WHERE r.review_status = 'Expired'
 ORDER BY r.report_create_time;
 
 -- 3. Approve report (Report ID = 10, Admin ID = 4)
--- Earlier pending reports on the same facility expire. Later ones stay pending.
+-- Every other pending report on the same facility expires: each one proposes
+-- the status the facility now has, so none of them can be approved.
 SET @facility_id = NULL;
 SET @old_status = NULL;
 SET @new_status = NULL;
@@ -130,13 +131,12 @@ WHERE reportID = 10
   AND review_status = 'Pending'
   AND EXISTS (SELECT 1 FROM admins WHERE userID = 4);
 
-UPDATE reports AS earlier
+UPDATE reports AS other
 JOIN reports AS approved ON approved.reportID = 10
-SET earlier.review_status = 'Expired'
-WHERE earlier.facilityID = approved.facilityID
-  AND earlier.reportID <> approved.reportID
-  AND earlier.review_status = 'Pending'
-  AND earlier.report_create_time < approved.report_create_time
+SET other.review_status = 'Expired'
+WHERE other.facilityID = approved.facilityID
+  AND other.reportID <> approved.reportID
+  AND other.review_status = 'Pending'
   AND approved.review_status = 'Approved'
   AND approved.adminID = 4;
 
@@ -412,7 +412,7 @@ WHERE rn.studentID = 2
 ORDER BY n.notification_create_time;
 
 -- 15. Admin changes facility status directly (Admin ID = 4, Facility ID = 20)
--- Earlier pending reports on this facility expire. Later ones stay pending.
+-- Every pending report on this facility expires.
 SET @change_time = '2026-11-20 10:00:00';
 
 START TRANSACTION;
@@ -435,7 +435,6 @@ UPDATE reports
 SET review_status = 'Expired'
 WHERE facilityID = 20
   AND review_status = 'Pending'
-  AND report_create_time < @change_time
   AND EXISTS (
     SELECT 1
     FROM revisions

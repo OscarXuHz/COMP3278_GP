@@ -215,8 +215,7 @@ def save_facility(facility_id=None, restore=False):
         if old["facility_status"] != status:
             cursor.execute("INSERT INTO revisions (facilityID, adminID, old_status, new_status) VALUES (%s,%s,%s,%s)",
                            (facility_id, session["admin"], old["facility_status"], status))
-            cursor.execute("UPDATE reports SET review_status='Expired' WHERE facilityID=%s AND review_status='Pending' "
-                           "AND report_create_time<CURRENT_TIMESTAMP", (facility_id,))
+            cursor.execute("UPDATE reports SET review_status='Expired' WHERE facilityID=%s AND review_status='Pending'", (facility_id,))
 
     try:
         transaction(save)
@@ -448,8 +447,7 @@ def review_report(report_id):
             cursor.execute("UPDATE facilities SET facility_status=%s WHERE facilityID=%s", (report["proposed_status"],fid))
             cursor.execute("INSERT INTO revisions (facilityID,reportID,adminID,old_status,new_status) VALUES (%s,%s,%s,%s,%s)",
                            (fid,report_id,uid,facility["facility_status"],report["proposed_status"]))
-            cursor.execute("UPDATE reports SET review_status='Expired' WHERE facilityID=%s AND review_status='Pending' AND report_create_time<%s",
-                           (fid,report["report_create_time"]))
+            cursor.execute("UPDATE reports SET review_status='Expired' WHERE facilityID=%s AND review_status='Pending'", (fid,))
         notify(cursor,report_id,report["studentID"])
     transaction(review)
     return "",204

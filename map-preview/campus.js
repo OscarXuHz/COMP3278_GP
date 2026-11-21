@@ -1279,7 +1279,7 @@ function renderReports() {
                   [report.build_name, report.facility_note, report.user_name && 'reported by ' + report.user_name].filter(Boolean).join(' · '),
                   report.proposed_status
                 ),
-                body: 'This will update the facility to "' + report.proposed_status + '", expire older pending reports on it, and record an audit revision.',
+                body: 'This will update the facility to "' + report.proposed_status + '", expire the other pending reports on it, and record an audit revision.',
                 confirmText: 'Approve update',
               });
               if (ok) {
