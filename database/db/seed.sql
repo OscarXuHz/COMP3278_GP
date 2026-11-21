@@ -189,14 +189,21 @@ INSERT INTO reports (
   (11, 1, 1, NULL, 'Unavailable', 'Pending',
     'Printer on G/F is out of paper again', NULL, NULL, '2026-11-17 14:00:00'),
   (12, 20, 7, NULL, 'Unavailable', 'Pending',
-    'G/F toilet is out of order', NULL, NULL, '2026-11-19 15:00:00');
+    'G/F toilet is out of order', NULL, NULL, '2026-11-19 15:00:00'),
+  (52, 4, 1, NULL, 'Unavailable', 'Pending',
+    'Demo: The dispenser near the Law Library toilets stopped dispensing water.', NULL, NULL, '2026-11-20 16:40:00'),
+  (53, 69, 2, NULL, 'Unavailable', 'Pending',
+    'Demo: The Aqua Hub beside the Jockey Club Tower lift is not dispensing water.', NULL, NULL, '2026-11-20 16:41:00'),
+  (54, 41, 3, NULL, 'Unavailable', 'Pending',
+    'Demo: The Main Library 1/F printer is out of paper.', NULL, NULL, '2026-11-20 16:42:00');
 
 INSERT INTO report_photos (reportID, photo) VALUES
-  (1, 'report1-paper.jpg'),
-  (1, 'report1-screen.jpg'),
-  (4, 'report4-printer.jpg'),
-  (6, 'report6-toilet.jpg'),
-  (9, 'report9-door.jpg');
+  (1, 'ric-printer-sign.jpg'),
+  (1, 'ric-copier-screen.jpg'),
+  (4, 'ric-print-copy-sign.jpg'),
+  (52, 'ric-law-library.jpg'),
+  (53, 'ric-cpd-jockey-club.jpg'),
+  (54, 'ric-colour-bw-sign.jpg');
 
 INSERT INTO revisions (
   revisionID, facilityID, reportID, adminID, old_status, new_status, revision_create_time
@@ -313,7 +320,19 @@ INSERT INTO notifications (notificationID, notification_create_time) VALUES
   (49, '2026-11-19 15:01:00'),
   (50, '2026-11-19 15:01:00'),
   (51, '2026-11-19 15:01:00'),
-  (52, '2026-11-19 15:01:00');
+  (52, '2026-11-19 15:01:00'),
+  (53, '2026-11-20 16:40:00'),
+  (54, '2026-11-20 16:40:00'),
+  (55, '2026-11-20 16:40:00'),
+  (56, '2026-11-20 16:40:00'),
+  (57, '2026-11-20 16:41:00'),
+  (58, '2026-11-20 16:41:00'),
+  (59, '2026-11-20 16:41:00'),
+  (60, '2026-11-20 16:41:00'),
+  (61, '2026-11-20 16:42:00'),
+  (62, '2026-11-20 16:42:00'),
+  (63, '2026-11-20 16:42:00'),
+  (64, '2026-11-20 16:42:00');
 
 INSERT INTO new_notifications (notificationID, reportID, adminID, new_is_read) VALUES
   (1, 1, 4, TRUE),
@@ -363,7 +382,19 @@ INSERT INTO new_notifications (notificationID, reportID, adminID, new_is_read) V
   (49, 12, 4, FALSE),
   (50, 12, 5, FALSE),
   (51, 12, 9, FALSE),
-  (52, 12, 10, FALSE);
+  (52, 12, 10, FALSE),
+  (53, 52, 4, FALSE),
+  (54, 52, 5, FALSE),
+  (55, 52, 9, FALSE),
+  (56, 52, 10, FALSE),
+  (57, 53, 4, FALSE),
+  (58, 53, 5, FALSE),
+  (59, 53, 9, FALSE),
+  (60, 53, 10, FALSE),
+  (61, 54, 4, FALSE),
+  (62, 54, 5, FALSE),
+  (63, 54, 9, FALSE),
+  (64, 54, 10, FALSE);
 
 INSERT INTO review_notifications (notificationID, reportID, studentID, review_is_read) VALUES
   (11, 4, 2, FALSE),

@@ -1176,25 +1176,26 @@ function renderReports() {
       for (const photo of report.photos) {
         if (photo.available) {
           const url = '/api/photos/' + encodeURIComponent(photo.name);
+          const caption = 'Report #' + report.reportID + (photo.name.startsWith('ric-') ? ' · RIC reference photo' : ' photo');
           photosRow.append(
             h(
               'button',
               {
                 type: 'button',
                 className: 'report-photo-btn',
-                title: 'Preview photo',
-                onClick: () => openPhotoDialog(url, 'Report #' + report.reportID + ' photo'),
+                title: caption,
+                onClick: () => openPhotoDialog(url, caption),
               },
-              h('img', {src: url, alt: 'Report photo', loading: 'lazy'})
+              h('img', {src: url, alt: caption, loading: 'lazy'})
             )
           );
         } else {
           photosRow.append(
             h(
               'span',
-              {className: 'report-photo-missing', title: 'Sample seed photo filename (no image file on disk)'},
+              {className: 'report-photo-missing', title: 'Image file unavailable'},
               makeSvg('Photo'),
-              h('span', {textContent: photo.name + ' (sample)'})
+              h('span', {textContent: 'Photo unavailable'})
             )
           );
         }

@@ -21,6 +21,12 @@ app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024
 PHOTO_DIR = Path(app.instance_path) / "report-photos" / os.getenv("DB_NAME", "campus_atlas")
 
 
+def photo_directory(filename):
+    if filename.startswith("ric-"):
+        return Path(app.root_path) / "database" / "report-photos"
+    return PHOTO_DIR
+
+
 def connect():
     if "db" not in g:
         g.db = pymysql.connect(
@@ -326,7 +332,7 @@ def list_reports():
     if rows:
         for photo in query("SELECT reportID,photo FROM report_photos WHERE reportID IN %s ORDER BY photo", (tuple(by_id),)):
             filename = photo["photo"]
-            by_id[photo["reportID"]]["photos"].append({"name":filename, "available":(PHOTO_DIR / filename).is_file()})
+            by_id[photo["reportID"]]["photos"].append({"name":filename, "available":(photo_directory(filename) / filename).is_file()})
     return jsonify(reports=rows)
 
 
@@ -334,7 +340,7 @@ def list_reports():
 def show_photo(filename):
     if not (session.get("student") or session.get("admin")):
         abort(403)
-    return send_from_directory(PHOTO_DIR, filename)
+    return send_from_directory(photo_directory(filename), filename)
 
 
 def notify(cursor, report_id, student=None):

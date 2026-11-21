@@ -248,20 +248,20 @@ WHERE reportID = 9
 
 ROLLBACK;
 
--- 6. Student submits a new report (Student ID = 1, Facility ID = 2)
+-- 6. Student submits a new report (Student ID = 1, Facility ID = 69)
 -- Also store a photo and notify every admin.
 START TRANSACTION;
 
 INSERT INTO reports (
   facilityID, studentID, adminID, proposed_status, review_status, create_note
 )
-SELECT 2, 1, NULL, 'Unavailable', 'Pending', 'Water dispenser on 3/F is empty'
+SELECT 69, 1, NULL, 'Unavailable', 'Pending', 'The dispenser by the Jockey Club Tower lift has stopped dispensing water'
 FROM students
 WHERE userID = 1
   AND EXISTS (
     SELECT 1
     FROM facilities
-    WHERE facilityID = 2
+    WHERE facilityID = 69
       AND archived = FALSE
   );
 
@@ -269,7 +269,7 @@ SET @report_id = LAST_INSERT_ID();
 SET @notice_time = '2026-11-21 09:00:00';
 
 INSERT INTO report_photos (reportID, photo)
-SELECT r.reportID, 'report-new-dispenser.jpg'
+SELECT r.reportID, 'ric-cpd-jockey-club.jpg'
 FROM reports AS r
 WHERE r.reportID = @report_id
   AND r.studentID = 1
