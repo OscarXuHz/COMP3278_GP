@@ -73,7 +73,7 @@ Immediately after a fresh import, expect:
 | Buildings | 44 |
 | Categories | 3 |
 | Facilities | 81 (81 visible, 0 archived) |
-| Reports | 15 (8 Pending, 4 Approved, 1 Rejected, 2 Expired) |
+| Reports | 15 (9 Pending, 3 Approved, 1 Rejected, 2 Expired) |
 | Revisions | 6 |
 
 The seed includes demonstration records and sample facilities from the RIC Campus Map dataset. Five example reports have six bundled [RIC reference photos](database/report-photos/). The four printer images are equipment and signage references from 港大RIC锐克《2026｜如何优雅地打印/复印》. The two water dispenser photos show locations featured in《2026｜如何优雅地在校园喝水》. Photo credit: RIC 庄友. The reported faults are demo scenarios. Uploaded images are stored under `instance/report-photos/<database>/`.
@@ -160,7 +160,7 @@ Students can only propose a change from the current status. Approval checks the 
 | `database/db/schema.sql` | Database, fourteen tables, keys and constraints |
 | `database/db/seed.sql` | Demo accounts, facilities, reports and revisions |
 | `database/db/queries.sql` | SQL examples; application SQL is in `app.py` |
-| `database/ER_diagram.png` | ER diagram for the current schema |
+| `database/db/ER_diagram.png` | ER diagram for the current schema |
 
 `students` and `admins` reference `users`. Each facility belongs to one building and one category. Each report references a facility and a student, with a nullable reviewing administrator. Each revision identifies the facility and administrator. Report-driven revisions also reference the approved report.
 
