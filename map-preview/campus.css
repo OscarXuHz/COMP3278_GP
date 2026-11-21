@@ -1618,6 +1618,24 @@ h2 {
 }
 .modal-form input:not([type="radio"]):not([type="file"]),
 .modal-form select { height: 38px; }
+#editor :is(input, select):disabled {
+  appearance: none;
+  opacity: 1;
+  color: #526059;
+  -webkit-text-fill-color: #526059;
+  border: 1px dashed #a3afa9;
+  background: #edf0ee url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23526059' stroke-width='1.8'%3E%3Crect x='5' y='10' width='14' height='11' rx='2'/%3E%3Cpath d='M8 10V7a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E") no-repeat right 11px center;
+  padding-right: 36px;
+  cursor: not-allowed;
+}
+#facility-note-hint {
+  padding: 8px 12px;
+  background: var(--bad-bg);
+  border-left: 3px solid var(--bad-ink);
+  border-radius: 4px;
+  color: var(--bad-ink);
+}
+#editor input[aria-invalid="true"] { border-color: var(--bad-ink); }
 .modal-form textarea {
   min-height: 66px;
   padding: 9px 12px;

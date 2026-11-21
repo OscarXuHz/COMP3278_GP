@@ -1558,15 +1558,19 @@ function updateNoteHint() {
     String(f.buildingID) === fields.buildingID.value && String(f.categoryID) === fields.categoryID.value &&
     f.floor === fields.floor.value.trim());
   const hint = el('facility-note-hint');
-  hint.hidden = !peers.length;
-  fields.facility_note.required = peers.length > 0;
-  fields.facility_note.setCustomValidity(peers.length && !fields.facility_note.value.trim()
-    ? 'Enter a note identifying this facility.' : '');
-  const missing = peers.find(f => !f.facility_note);
-  hint.textContent = missing
-    ? 'Add a note to the existing facility here first. Both facilities need a note.'
-    : 'Facilities of the same category on this floor each need a note.';
-  el('editor-save').disabled = Boolean(missing);
+  const note = fields.facility_note;
+  note.required = peers.length > 0;
+  const needsNote = note.required && !note.value.trim();
+  const missingPeerNote = peers.some(f => !f.facility_note?.trim());
+  const noteMessage = 'Another facility of this type is on this floor. Add a note identifying this one.';
+  note.setCustomValidity(needsNote ? noteMessage : '');
+  note.setAttribute('aria-invalid', String(needsNote));
+  const warning = missingPeerNote
+    ? 'Edit the existing facility to add its missing note first. Both facilities need a note.'
+    : needsNote ? noteMessage : '';
+  hint.hidden = !warning;
+  if (hint.textContent !== warning) hint.textContent = warning;
+  el('editor-save').disabled = needsNote || missingPeerNote;
 }
 
 function editFacility(f = {}) {
