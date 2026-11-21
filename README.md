@@ -2,11 +2,13 @@
 
 Campus Atlas is a COMP3278 database project for finding campus facilities and reporting changes to their availability. The app uses Flask, PyMySQL, MySQL and a Leaflet map of HKU.
 
+COMP3278 Group 10: Xu Jiahang, Chen Ziqi.
+
 ## Functions
 
 - **Guest:** browse facilities, filter by building or category, and locate their buildings on the map.
-- **Student:** sign in, submit a proposed facility status, view personal reports, and withdraw a report while it is pending.
-- **Administrator:** add, edit and archive facilities; approve or reject reports; view the history of approved status changes.
+- **Student:** register or sign in, submit a proposed facility status with an optional note and photos, view personal reports, and withdraw a report while it is pending. Students can also save favourite facilities, like reports and receive a notification when their report is reviewed.
+- **Administrator:** add, edit, archive and restore facilities; approve or reject reports; view each facility's status history. Administrators are notified of new reports.
 
 Students report changes to existing facilities; they do not create buildings or facilities. Facility statuses are `Available` and `Unavailable`.
 
@@ -138,7 +140,7 @@ These are seeded demonstration accounts. The app uses one login session per brow
 These steps change the local demo data. The counts above describe the fresh seed, not the database after using the app.
 
 1. **Read:** open `/`, filter by building or category, and select a facility to locate its building.
-2. **Create a report:** sign in at `/student` as `student1`. Find the Main Library G/F printer and note its current status. Click **Report**, choose a different proposed status, and submit. Open **My reports**: the newest report should be `Pending`, while the facility retains its original status.
+2. **Create a report:** sign in at `/student` as `student1`. Find the Main Library G/F printer with the note `Printer number: 1` and note its current status. Click **Report**, choose a different proposed status, and submit. Open **My reports**: the newest report should be `Pending`, while the facility retains its original status.
 3. **Approve and update:** sign out, open `/admin`, and sign in as `admin1`. Click **Reports** and find the new pending report by its student, building, floor and proposed status (the seed already includes pending reports). Click **Approve** and confirm. The report becomes `Approved` and the facility takes the proposed status.
 4. **Check history:** return to **Facilities** and open that facility's **History**. It should show the old/new status, approving administrator, reporting student and report ID. Refresh the public map or another open browser window to see the updated facility status; other tabs do not receive live updates.
 5. **Reject:** submit another student report and reject it as an administrator. Its status becomes `Rejected`; the facility status and revision history stay unchanged.
@@ -157,12 +159,12 @@ Students can only propose a change from the current status. Approval checks the 
 | `map-preview/campus.js`, `map-preview/campus.css` | Browser UI and map interactions |
 | `map-preview/assets/` | Bundled HKU campus map assets |
 | `map-preview/vendor/` | Leaflet and its license |
-| `database/db/schema.sql` | Database, fourteen tables, keys and constraints |
+| `database/db/schema.sql` | Database, fourteen tables, keys, constraints and triggers |
 | `database/db/seed.sql` | Demo accounts, facilities, reports and revisions |
 | `database/db/queries.sql` | SQL examples; application SQL is in `app.py` |
 | `database/db/ER_diagram.png` | ER diagram for the current schema |
 
-`students` and `admins` reference `users`. Each facility belongs to one building and one category. Each report references a facility and a student, with a nullable reviewing administrator. Each revision identifies the facility and administrator. Report-driven revisions also reference the approved report.
+`students` and `admins` reference `users`. Triggers keep the two subtypes disjoint: a user cannot be both a student and an administrator. `review_notifications` and `new_notifications` are kept disjoint the same way. Each facility belongs to one building and one category. Each report references a facility and a student, with a nullable reviewing administrator. Each revision identifies the facility and administrator. Report-driven revisions also reference the approved report.
 
 The map uses Leaflet `CRS.Simple` with an 842 × 595 image. Building IDs match the map's printed building numbers. `buildings.map_x` and `map_y` are image coordinates measured from the top-left, not latitude/longitude. Facilities use their building's position.
 
