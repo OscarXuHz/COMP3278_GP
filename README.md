@@ -33,11 +33,11 @@ All Python commands explicitly use the same environment, so activation is option
 Start your installed MySQL server using its service manager or installer controls. For the commands below, use your own MySQL username, host and port if they differ from `root`, `127.0.0.1` and `3306`.
 
 ```sh
-mysql -h 127.0.0.1 -P 3306 -u root -p < database/db/schema.sql
-mysql -h 127.0.0.1 -P 3306 -u root -p < database/db/seed.sql
+mysql -h 127.0.0.1 -P 3306 -u root -p --init-command="SET time_zone='+08:00'" < database/db/schema.sql
+mysql -h 127.0.0.1 -P 3306 -u root -p --init-command="SET time_zone='+08:00'" < database/db/seed.sql
 ```
 
-Enter your **MySQL account password** when prompted. This is separate from the web app's demo account passwords. Import `schema.sql` first, then `seed.sql`; no separate data download is required.
+Enter your **MySQL account password** when prompted. This is separate from the web app's demo account passwords. Import `schema.sql` first, then `seed.sql`; no separate data download is required. The application sets every connection to Hong Kong time (`+08:00`). `TIMESTAMP` values are stored in UTC and converted with the session time zone, so the import uses that same zone. Otherwise the clock times in `seed.sql` shift by the gap between the server zone and Hong Kong.
 
 Both scripts use the database name `campus_atlas`. Run them once against a fresh database: they are initialization scripts, not migrations. Do not rerun them over an existing project database containing work you want to keep. If tables already exist, use the existing initialized database or prepare a separate clean MySQL instance for a fresh demo.
 
@@ -46,8 +46,8 @@ Both scripts use the database name `campus_atlas`. Run them once against a fresh
 Replace `mysql` with the full path to **your installed client** in each command. For example, only if your installation uses this path:
 
 ```sh
-/usr/local/mysql/bin/mysql -h 127.0.0.1 -P 3306 -u root -p < database/db/schema.sql
-/usr/local/mysql/bin/mysql -h 127.0.0.1 -P 3306 -u root -p < database/db/seed.sql
+/usr/local/mysql/bin/mysql -h 127.0.0.1 -P 3306 -u root -p --init-command="SET time_zone='+08:00'" < database/db/schema.sql
+/usr/local/mysql/bin/mysql -h 127.0.0.1 -P 3306 -u root -p --init-command="SET time_zone='+08:00'" < database/db/seed.sql
 ```
 
 Alternatively, add the directory containing the executable to `PATH`. For the example above:
@@ -70,13 +70,13 @@ Immediately after a fresh import, expect:
 | --- | ---: |
 | Tables | 14 |
 | Users | 10 (6 students, 4 administrators) |
-| Buildings | 12 |
+| Buildings | 44 |
 | Categories | 3 |
-| Facilities | 34 (33 visible, 1 archived) |
-| Reports | 12 (5 Pending, 4 Approved, 1 Rejected, 2 Expired) |
+| Facilities | 81 (81 visible, 0 archived) |
+| Reports | 15 (8 Pending, 4 Approved, 1 Rejected, 2 Expired) |
 | Revisions | 6 |
 
-The seed includes demonstration records and sample facilities from the RIC Campus Map dataset. The seed includes sample photo filenames. Upload JPEG, PNG or WebP images to see photo previews. Uploaded images are stored under `instance/report-photos/<database>/`.
+The seed includes demonstration records and sample facilities from the RIC Campus Map dataset. Five example reports have six bundled [RIC reference photos](database/report-photos/). The four printer images are equipment and signage references from 港大RIC锐克《2026｜如何优雅地打印/复印》. The two water dispenser photos show locations featured in《2026｜如何优雅地在校园喝水》. Photo credit: RIC 庄友. The reported faults are demo scenarios. Uploaded images are stored under `instance/report-photos/<database>/`.
 
 ## 3. Configure and run Flask
 
@@ -110,6 +110,7 @@ Leave `DB_SOCKET` unset for the TCP setup above. If your installation requires a
 Create the environment with `py -m venv .venv` and install dependencies with `.venv\Scripts\python.exe -m pip install -r requirements.txt`. PowerShell does not support the `<` import syntax above; open the MySQL client from the repository root, then run:
 
 ```sql
+SET time_zone = '+08:00';
 SOURCE database/db/schema.sql;
 SOURCE database/db/seed.sql;
 ```
@@ -127,8 +128,8 @@ Set connection variables using PowerShell syntax, such as `$env:DB_USER = 'root'
 | Administrator | `admin2@connect.hku.hk` | `admin2` |
 
 - `/`: public campus map; no login required.
-- `/student`: student login, facility reports and **My reports**.
-- `/admin`: administrator login, facility management, **Mailbox** and **History**.
+- `/student`: student login, registration, facility reports and **My reports**. Choose **Create student account** to register with a username, an `@connect.hku.hk` or `@hku.hk` address and a password of 8–128 characters. Registration checks the email domain and signs the student in immediately.
+- `/admin`: administrator login, facility management, **Reports** and **History**.
 
 These are seeded demonstration accounts. The app uses one login session per browser profile. To switch roles, sign out and sign in on the other role's page; two ordinary tabs share the same session. Separate browser profiles/private windows can be used for simultaneous student/admin demonstrations.
 
@@ -137,14 +138,14 @@ These are seeded demonstration accounts. The app uses one login session per brow
 These steps change the local demo data. The counts above describe the fresh seed, not the database after using the app.
 
 1. **Read:** open `/`, filter by building or category, and select a facility to locate its building.
-2. **Create a report:** sign in at `/student` as `student1`. Find the Main Library 1F printer and note its current status. Click **Report**, choose a different proposed status, and submit. Open **My reports**: the newest report should be `Pending`, while the facility retains its original status.
-3. **Approve and update:** sign out, open `/admin`, and sign in as `admin1`. Click **Mailbox** and find the new pending report by its student, building, floor and proposed status (the seed already includes pending reports). Click **Approve** and confirm. The report becomes `Approved` and the facility takes the proposed status.
+2. **Create a report:** sign in at `/student` as `student1`. Find the Main Library G/F printer and note its current status. Click **Report**, choose a different proposed status, and submit. Open **My reports**: the newest report should be `Pending`, while the facility retains its original status.
+3. **Approve and update:** sign out, open `/admin`, and sign in as `admin1`. Click **Reports** and find the new pending report by its student, building, floor and proposed status (the seed already includes pending reports). Click **Approve** and confirm. The report becomes `Approved` and the facility takes the proposed status.
 4. **Check history:** return to **Facilities** and open that facility's **History**. It should show the old/new status, approving administrator, reporting student and report ID. Refresh the public map or another open browser window to see the updated facility status; other tabs do not receive live updates.
 5. **Reject:** submit another student report and reject it as an administrator. Its status becomes `Rejected`; the facility status and revision history stay unchanged.
 6. **Delete a pending report:** as a student, submit a new report and withdraw it from **My reports** before review. This deletes that student's pending row from `reports`; approved/rejected reports cannot be withdrawn.
-7. **Manage facilities:** as an administrator, use **+ Add facility** to create a demo facility, **Edit** to change it, and **Archive** to remove it from the public map. Archive is a soft delete (`archived=TRUE`); the row remains in MySQL.
+7. **Manage facilities:** as an administrator, use **+ Add facility** to create a demo facility, **Edit** to change it, and **Archive** to remove it from the public map. Edit updates the status and facility note. The building, category and floor are fixed. Active facilities sharing all three need a note on each record. Use **Archived → Restore** to return an archived facility to the map.
 
-Approval runs in one transaction: lock the pending report and its facility with `SELECT ... FOR UPDATE`, update `reports`, update `facilities`, and insert a `revisions` row. A failure rolls back the transaction. Each report can have at most one revision (`UNIQUE(reportID)`). Both decisions notify the reporting student. Approval expires older pending reports for the facility. Direct administrator status changes also appear in History.
+Students can only propose a change from the current status. Approval checks the status again before making changes. Approval runs in one transaction: lock the pending report and its facility with `SELECT ... FOR UPDATE`, update `reports`, update `facilities`, and insert a `revisions` row. A failure rolls back the transaction. Each report can have at most one revision (`UNIQUE(reportID)`). Both decisions notify the reporting student. Approval expires every other pending report on the facility, since each one proposes the status the facility now has. Direct administrator status changes also appear in History.
 
 ## Project structure and database design
 

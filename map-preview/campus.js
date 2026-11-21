@@ -3,6 +3,7 @@ const pageMode = document.body.dataset.page || 'public';
 
 const building = el('building');
 const editor = el('editor');
+const archiveDialog = el('archive-dialog');
 const facilityDialog = el('facility-dialog');
 const reportDialog = el('report-dialog');
 const historyDialog = el('history-dialog');
@@ -237,6 +238,10 @@ async function api(path, method = 'GET', body) {
   }
   const response = await fetch(path, init);
   if (!response.ok) {
+    if (response.headers.get('content-type')?.includes('application/json')) {
+      const {error} = await response.json();
+      if (error) throw new Error(error);
+    }
     if (response.status === 413) throw new Error('Photos exceed the 20 MB upload limit.');
     if (response.status === 400 && body instanceof FormData) throw new Error('Use up to six JPEG, PNG or WebP photos, each under 20 megapixels.');
     if (response.status === 401) throw new Error('Incorrect email or password.');
@@ -447,12 +452,13 @@ function renderModeTabs() {
     return;
   }
   tabs.hidden = false;
-  el('tab-facilities').setAttribute('aria-selected', String(panel === 'facilities'));
-  el('tab-reports').setAttribute('aria-selected', String(panel === 'reports'));
+  const viewingFacilityReports = panel === 'reports' && reportFacility !== null;
+  el('tab-facilities').setAttribute('aria-selected', String(panel === 'facilities' || viewingFacilityReports));
+  el('tab-reports').setAttribute('aria-selected', String(panel === 'reports' && !viewingFacilityReports));
   el('tab-notices').setAttribute('aria-selected', String(panel === 'notifications'));
 
   el('tab-facilities-count').textContent = data.facilities.length;
-  el('tab-reports-label').textContent = data.student ? 'My reports' : 'Mailbox';
+  el('tab-reports-label').textContent = data.student ? 'My reports' : 'Reports';
 
   const pendingCount = reports.filter(r => r.review_status === 'Pending').length;
   const reportsBadge = el('tab-reports-count');
@@ -477,6 +483,7 @@ function matchesSearch(facility, q) {
     buildingCampus(facility.buildingID),
     categoryName(facility.categoryID),
     facility.floor,
+    facility.facility_note,
     facility.facility_status,
   ]
     .join(' ')
@@ -557,6 +564,10 @@ function renderStatusFilters(baseFacilities) {
   el('status-filters').replaceChildren(...nodes);
 }
 
+function facilityNote(note) {
+  return note ? h('span', {className: 'facility-note', textContent: note}) : null;
+}
+
 function buildPopupContent(buildingItem, buildingFacilities) {
   const wrapper = h('div', {className: 'map-popup'});
   wrapper.append(
@@ -573,6 +584,8 @@ function buildPopupContent(buildingItem, buildingFacilities) {
 
   const list = h('div', {className: 'map-popup-list'});
   const sorted = [...buildingFacilities].sort((a, b) => {
+    const selectionOrder = Number(b.facilityID === selectedFacility) - Number(a.facilityID === selectedFacility);
+    if (selectionOrder) return selectionOrder;
     const catCmp = categoryName(a.categoryID).localeCompare(categoryName(b.categoryID));
     return catCmp !== 0 ? catCmp : floorRank(a.floor) - floorRank(b.floor);
   });
@@ -582,14 +595,16 @@ function buildPopupContent(buildingItem, buildingFacilities) {
   } else {
     for (const facility of sorted.slice(0, 6)) {
       const fl = cleanFloor(facility.floor);
+      const isSelected = facility.facilityID === selectedFacility;
       const itemRow = h(
         'div',
-        {className: 'map-popup-item'},
+        {className: 'map-popup-item' + (isSelected ? ' selected' : '')},
         h(
           'button',
           {
             type: 'button',
             className: 'map-popup-item-btn',
+            'aria-pressed': String(isSelected),
             onClick: () => {
               panel = 'facilities';
               selectedFacility = facility.facilityID;
@@ -601,7 +616,8 @@ function buildPopupContent(buildingItem, buildingFacilities) {
             'div',
             {},
             h('span', {className: 'map-popup-item-name', textContent: categoryName(facility.categoryID)}),
-            fl ? h('span', {className: 'map-popup-item-floor', textContent: fl}) : null
+            fl ? h('span', {className: 'map-popup-item-floor', textContent: fl}) : null,
+            facilityNote(facility.facility_note)
           ),
           statusBadge(facility.facility_status)
         )
@@ -659,14 +675,11 @@ function renderMarkers(filteredFacilities) {
   for (const item of data.buildings) {
     const matching = filteredFacilities.filter(f => String(f.buildingID) === String(item.buildingID));
     const allInBuilding = data.facilities.filter(f => String(f.buildingID) === String(item.buildingID));
+    if (!allInBuilding.length) continue;
     const anyFilterActive = Boolean(onlyFavorites || categoryID || statusFilter || searchQuery.trim());
     if (anyFilterActive && !matching.length) continue;
 
     const listForPin = anyFilterActive ? matching : allInBuilding;
-    let pinDot = 'unknown';
-    if (listForPin.some(f => f.facility_status === 'Available')) pinDot = 'available';
-    else if (listForPin.some(f => f.facility_status === 'Unavailable')) pinDot = 'unavailable';
-
     const selected = String(item.buildingID) === String(building.value);
     const shortName = SHORT_BUILDING_NAMES[item.build_name] || item.build_name;
 
@@ -674,7 +687,6 @@ function renderMarkers(filteredFacilities) {
       'div',
       {className: 'map-pin' + (selected ? ' active' : '')},
       h('span', {className: 'pin-id', textContent: item.buildingID}),
-      h('i', {className: 'dot pin-dot ' + pinDot}),
       h('span', {className: 'pin-label', textContent: shortName}),
       h('span', {className: 'pin-count', textContent: listForPin.length})
     );
@@ -913,7 +925,8 @@ function renderFacilities() {
                 textContent: fl || 'Floor N/A',
                 title: facility.floor,
               })
-            )
+            ),
+            facilityNote(facility.facility_note)
           ),
           statusBadge(facility.facility_status)
         )
@@ -961,7 +974,7 @@ function renderFacilities() {
                 const ok = await confirmAction({
                   kicker: 'Archive Facility',
                   title: 'Archive this facility?',
-                  summaryNode: makeSummaryNode(cat, buildingName(facility.buildingID) + (fl ? ' · ' + fl : ''), facility.facility_status),
+                  summaryNode: makeSummaryNode(cat, [buildingName(facility.buildingID), fl, facility.facility_note].filter(Boolean).join(' · '), facility.facility_status),
                   body: 'Archived facilities are hidden from the public campus map but remain preserved in MySQL.',
                   confirmText: 'Archive',
                   danger: true,
@@ -1004,7 +1017,7 @@ function renderReportFilters(baseReports) {
     const f = data.facilities.find(item => item.facilityID === reportFacility);
     const fl = f ? cleanFloor(f.floor) : '';
     const label = f
-      ? buildingName(f.buildingID) + ' · ' + categoryName(f.categoryID) + (fl ? ' (' + fl + ')' : '')
+      ? [buildingName(f.buildingID), categoryName(f.categoryID) + (fl ? ' (' + fl + ')' : ''), f.facility_note].filter(Boolean).join(' · ')
       : 'Facility #' + reportFacility;
     banner.replaceChildren(
       h(
@@ -1012,10 +1025,10 @@ function renderReportFilters(baseReports) {
         {
           type: 'button',
           className: 'breadcrumb-back',
-          onClick: () => openReports(null),
+          onClick: openFacilities,
         },
         makeSvg('ArrowLeft'),
-        h('span', {textContent: data.student ? 'My reports' : 'Mailbox'})
+        h('span', {textContent: 'Facilities'})
       ),
       h('span', {className: 'breadcrumb-sep', 'aria-hidden': 'true', textContent: '/'}),
       h('span', {className: 'context-banner-text', textContent: label, title: label})
@@ -1088,7 +1101,7 @@ function renderReports() {
 
   renderMarkers(data.facilities);
 
-  el('list-label').textContent = reportFacility ? 'Facility reports' : data.student ? 'My reports' : 'Mailbox';
+  el('list-label').textContent = reportFacility ? 'Facility reports' : data.student ? 'My reports' : 'Reports';
   el('count').textContent = visible.length;
   const pendingCount = visible.filter(r => r.review_status === 'Pending').length;
   el('list-sub').textContent = pendingCount ? pendingCount + ' pending' : '';
@@ -1104,7 +1117,7 @@ function renderReports() {
         {className: 'empty-state'},
         makeSvg('Empty'),
         h('strong', {textContent: 'No reports found'}),
-        h('p', {textContent: reports.length ? 'Try clearing your search or status filter.' : 'No facility reports have been submitted yet.'})
+        reports.length ? h('p', {textContent: 'Clear your search or filters.'}) : null
       )
     );
     return;
@@ -1139,6 +1152,7 @@ function renderReports() {
           h('span', {textContent: report.build_name + (showReporter ? ' · ' + report.user_name : '')}),
           h('span', {className: 'report-id-tag', textContent: '#' + report.reportID})
         ),
+        facilityNote(report.facility_note),
         h('div', {className: 'report-diff'}, diffNode(fromStatus, toStatus))
       )
     );
@@ -1162,25 +1176,26 @@ function renderReports() {
       for (const photo of report.photos) {
         if (photo.available) {
           const url = '/api/photos/' + encodeURIComponent(photo.name);
+          const caption = 'Report #' + report.reportID + (photo.name.startsWith('ric-') ? ' · RIC reference photo' : ' photo');
           photosRow.append(
             h(
               'button',
               {
                 type: 'button',
                 className: 'report-photo-btn',
-                title: 'Preview photo',
-                onClick: () => openPhotoDialog(url, 'Report #' + report.reportID + ' photo'),
+                title: caption,
+                onClick: () => openPhotoDialog(url, caption),
               },
-              h('img', {src: url, alt: 'Report photo', loading: 'lazy'})
+              h('img', {src: url, alt: caption, loading: 'lazy'})
             )
           );
         } else {
           photosRow.append(
             h(
               'span',
-              {className: 'report-photo-missing', title: 'Sample seed photo filename (no image file on disk)'},
+              {className: 'report-photo-missing', title: 'Image file unavailable'},
               makeSvg('Photo'),
-              h('span', {textContent: photo.name + ' (sample)'})
+              h('span', {textContent: 'Photo unavailable'})
             )
           );
         }
@@ -1223,7 +1238,7 @@ function renderReports() {
                 title: 'Withdraw this pending report?',
                 summaryNode: makeSummaryNode(
                   report.category_name + (fl ? ' · ' + fl : ''),
-                  report.build_name,
+                  [report.build_name, report.facility_note].filter(Boolean).join(' · '),
                   report.proposed_status
                 ),
                 body: 'This permanently deletes your pending report before an administrator reviews it.',
@@ -1251,6 +1266,8 @@ function renderReports() {
           h('button', {
             type: 'button',
             className: 'row-btn approve',
+            disabled: report.facility_status === report.proposed_status,
+            title: report.facility_status === report.proposed_status ? 'Facility already has this status' : null,
             textContent: 'Approve',
             onClick: async () => {
               const ok = await confirmAction({
@@ -1259,10 +1276,10 @@ function renderReports() {
                 title: 'Approve status update?',
                 summaryNode: makeSummaryNode(
                   report.category_name + (fl ? ' · ' + fl : ''),
-                  report.build_name + (report.user_name ? ' · reported by ' + report.user_name : ''),
+                  [report.build_name, report.facility_note, report.user_name && 'reported by ' + report.user_name].filter(Boolean).join(' · '),
                   report.proposed_status
                 ),
-                body: 'This will update the facility to "' + report.proposed_status + '", expire older pending reports on it, and record an audit revision.',
+                body: 'This will update the facility to "' + report.proposed_status + '", expire the other pending reports on it, and record an audit revision.',
                 confirmText: 'Approve update',
               });
               if (ok) {
@@ -1287,7 +1304,7 @@ function renderReports() {
                 title: 'Reject this report?',
                 summaryNode: makeSummaryNode(
                   report.category_name + (fl ? ' · ' + fl : ''),
-                  report.build_name + (report.user_name ? ' · reported by ' + report.user_name : ''),
+                  [report.build_name, report.facility_note, report.user_name && 'reported by ' + report.user_name].filter(Boolean).join(' · '),
                   report.proposed_status
                 ),
                 body: 'The report will be marked Rejected and the current facility status will remain unchanged.',
@@ -1338,12 +1355,7 @@ function renderNotifications() {
         'div',
         {className: 'empty-state'},
         makeSvg('Bell'),
-        h('strong', {textContent: 'All caught up'}),
-        h('p', {
-          textContent: data.admin
-            ? 'New student reports will appear here when submitted.'
-            : 'Review updates on your reports will appear here.',
-        })
+        h('strong', {textContent: 'No notifications'})
       )
     );
     return;
@@ -1409,6 +1421,7 @@ function render() {
   if (!data) return;
   renderSessionBar();
   renderModeTabs();
+  if (el('show-archived')) el('show-archived').hidden = !(data.admin && panel === 'facilities');
   if (panel === 'notifications' && (data.admin || data.student)) {
     renderNotifications();
   } else if (panel === 'reports' && (data.student || data.admin)) {
@@ -1458,7 +1471,7 @@ async function openHistory(facility) {
   if (!historyDialog) return;
   const cat = categoryName(facility.categoryID);
   const fl = cleanFloor(facility.floor);
-  const place = buildingName(facility.buildingID);
+  const place = [buildingName(facility.buildingID), facility.facility_note].filter(Boolean).join(' · ');
   el('history-summary').replaceChildren(
     makeSummaryNode(cat + (fl ? ' · ' + fl : ''), place, facility.facility_status)
   );
@@ -1525,17 +1538,39 @@ function openReport(facility) {
   clearPhotoPreviews();
   const cat = categoryName(facility.categoryID);
   const fl = cleanFloor(facility.floor);
-  const place = buildingName(facility.buildingID);
+  const place = [buildingName(facility.buildingID), facility.facility_note].filter(Boolean).join(' · ');
   el('report-summary').replaceChildren(
     makeSummaryNode(cat + (fl ? ' · ' + fl : ''), place, facility.facility_status)
   );
   const defaultStatus = facility.facility_status === 'Available' ? 'Unavailable' : 'Available';
   const radios = el('report-form').querySelectorAll('input[name="proposed_status"]');
   radios.forEach(input => {
+    input.disabled = input.value === facility.facility_status;
     input.checked = input.value === defaultStatus;
   });
   el('report-message').textContent = '';
   reportDialog.showModal();
+}
+
+function updateNoteHint() {
+  const fields = editor.elements;
+  const peers = data.facilities.filter(f => f.facilityID !== editing &&
+    String(f.buildingID) === fields.buildingID.value && String(f.categoryID) === fields.categoryID.value &&
+    f.floor === fields.floor.value.trim());
+  const hint = el('facility-note-hint');
+  const note = fields.facility_note;
+  note.required = peers.length > 0;
+  const needsNote = note.required && !note.value.trim();
+  const missingPeerNote = peers.some(f => !f.facility_note?.trim());
+  const noteMessage = 'Another facility of this type is on this floor. Add a note identifying this one.';
+  note.setCustomValidity(needsNote ? noteMessage : '');
+  note.setAttribute('aria-invalid', String(needsNote));
+  const warning = missingPeerNote
+    ? 'Edit the existing facility to add its missing note first. Both facilities need a note.'
+    : needsNote ? noteMessage : '';
+  hint.hidden = !warning;
+  if (hint.textContent !== warning) hint.textContent = warning;
+  el('editor-save').disabled = needsNote || missingPeerNote;
 }
 
 function editFacility(f = {}) {
@@ -1549,7 +1584,12 @@ function editFacility(f = {}) {
   }
   if (!editing && building.value) editor.elements.buildingID.value = building.value;
   if (!editing && categoryID) editor.elements.categoryID.value = categoryID;
-  el('editor-title').textContent = editing ? 'Edit facility' : 'Add facility';
+  for (const field of ['buildingID', 'categoryID', 'floor']) editor.elements[field].disabled = Boolean(editing);
+  editor.elements.facility_status.disabled = Boolean(f.archived);
+  editor.dataset.restoring = f.archived ? 'true' : 'false';
+  el('editor-title').textContent = f.archived ? 'Restore facility' : editing ? 'Edit facility' : 'Add facility';
+  el('editor-save').textContent = f.archived ? 'Restore facility' : 'Save facility';
+  updateNoteHint();
   el('editor-message').textContent = '';
   facilityDialog.showModal();
 }
@@ -1650,13 +1690,15 @@ el('reset').onclick = () => {
   render();
 };
 
-el('tab-facilities').onclick = () => {
+function openFacilities() {
   const hadFacilityScope = reportFacility !== null;
   reportFacility = null;
   panel = 'facilities';
   if (hadFacilityScope) load().catch(error => { el('message').textContent = error.message; });
   else render();
-};
+}
+
+el('tab-facilities').onclick = openFacilities;
 
 el('tab-reports').onclick = () => openReports(null);
 
@@ -1695,7 +1737,7 @@ if (el('add')) {
 }
 
 // Dialog backdrop dismissal & close buttons
-[loginDialog, reportDialog, facilityDialog, historyDialog, photoDialog].forEach(dlg => {
+[loginDialog, reportDialog, facilityDialog, archiveDialog, historyDialog, photoDialog].forEach(dlg => {
   if (!dlg) return;
   dlg.addEventListener('click', event => {
     if (event.target === dlg) dlg.close();
@@ -1707,6 +1749,28 @@ if (photoDialog) {
 }
 
 if (loginDialog) {
+  let registering = false;
+  const toggle = el('signup-toggle');
+  if (toggle) {
+    const password = el('login').elements.password;
+    const setMode = signup => {
+      registering = signup;
+      el('signup-name').hidden = !signup;
+      el('login').elements.user_name.disabled = !signup;
+      el('login').elements.user_name.required = signup;
+      el('login-title').textContent = signup ? 'Create student account' : 'Sign in to report';
+      el('login-submit').textContent = signup ? 'Sign up' : 'Student sign in';
+      toggle.textContent = signup ? 'Back to sign in' : 'Create student account';
+      loginDialog.querySelector('.demo-accounts').hidden = signup;
+      password.value = '';
+      password.autocomplete = signup ? 'new-password' : 'current-password';
+      password.minLength = signup ? 8 : 0;
+      password.placeholder = signup ? '8 to 128 characters' : 'Enter password';
+      el('login-message').textContent = '';
+    };
+    toggle.onclick = () => setMode(!registering);
+    loginDialog.addEventListener('close', () => setMode(false));
+  }
   const dismissLogin = () => {
     try {
       sessionStorage.setItem('atlas-login-dismissed-' + pageMode, '1');
@@ -1723,22 +1787,47 @@ if (loginDialog) {
     try {
       sessionStorage.removeItem('atlas-login-dismissed-' + pageMode);
     } catch (_error) {}
-    update('/api/session', 'POST', payload, null, 'Signed in');
+    update(registering ? '/api/students' : '/api/session', 'POST', payload, null, registering ? 'Account created' : 'Signed in');
+  };
+}
+
+if (archiveDialog) {
+  el('archive-close').onclick = () => archiveDialog.close();
+  el('show-archived').onclick = async () => {
+    try {
+      const rows = await api('/api/facilities/archived');
+      const list = el('archive-list');
+      list.replaceChildren(...rows.map(f => h('div', {className: 'archive-row'},
+        h('div', {}, h('strong', {textContent: categoryName(f.categoryID)}),
+          h('span', {className: 'facility-note', textContent: buildingName(f.buildingID) + ' · ' + f.floor}),
+          facilityNote(f.facility_note)),
+        h('button', {type: 'button', className: 'row-btn', textContent: 'Restore', onClick: () => {
+          archiveDialog.close();
+          editFacility(f);
+        }})
+      )));
+      if (!rows.length) list.textContent = 'No archived facilities.';
+      archiveDialog.showModal();
+    } catch (error) {
+      el('message').textContent = error.message;
+    }
   };
 }
 
 if (editor && facilityDialog) {
+  editor.addEventListener('input', updateNoteHint);
   el('cancel').onclick = () => facilityDialog.close();
   el('editor-close').onclick = () => facilityDialog.close();
   editor.onsubmit = event => {
     event.preventDefault();
     const payload = Object.fromEntries(new FormData(editor));
+    const restoring = editor.dataset.restoring === 'true';
     update(
-      '/api/facilities' + (editing ? '/' + editing : ''),
-      editing ? 'PUT' : 'POST',
+      '/api/facilities' + (editing ? '/' + editing : '') + (restoring ? '/restore' : ''),
+      editing && !restoring ? 'PUT' : 'POST',
       payload,
       null,
-      editing ? 'Facility updated' : 'Facility added'
+      restoring ? 'Facility restored' : editing ? 'Facility updated' : 'Facility added'
     );
   };
 }

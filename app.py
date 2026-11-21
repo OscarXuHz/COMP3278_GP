@@ -1,4 +1,5 @@
 import os
+import re
 import secrets
 from pathlib import Path
 from uuid import uuid4
@@ -6,8 +7,9 @@ from uuid import uuid4
 from PIL import Image, UnidentifiedImageError
 
 import pymysql
-from flask import send_from_directory, render_template, Flask, abort, g, jsonify, request, session
+from flask import make_response, send_from_directory, render_template, Flask, abort, g, jsonify, request, session
 from pymysql.cursors import DictCursor
+from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__, static_folder="map-preview", static_url_path="")
 app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_bytes(32)
@@ -19,6 +21,12 @@ app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024
 PHOTO_DIR = Path(app.instance_path) / "report-photos" / os.getenv("DB_NAME", "campus_atlas")
 
 
+def photo_directory(filename):
+    if filename.startswith("ric-"):
+        return Path(app.root_path) / "database" / "report-photos"
+    return PHOTO_DIR
+
+
 def connect():
     if "db" not in g:
         g.db = pymysql.connect(
@@ -27,6 +35,10 @@ def connect():
             password=os.getenv("DB_PASSWORD", ""), database=os.getenv("DB_NAME", "campus_atlas"),
             cursorclass=DictCursor, autocommit=True,
         )
+        # Hong Kong has no daylight saving. TIMESTAMP values are stored in UTC and
+        # converted with the session time zone, so this keeps CURRENT_TIMESTAMP in HKT.
+        with g.db.cursor() as cursor:
+            cursor.execute("SET time_zone = '+08:00'")
     return g.db
 
 
@@ -34,6 +46,10 @@ def query(sql, args=(), write=False):
     with connect().cursor() as cursor:
         cursor.execute(sql, args)
         return cursor.rowcount if write else cursor.fetchall()
+
+
+def invalid(message, status=400):
+    abort(make_response(jsonify(error=message), status))
 
 
 def transaction(callback):
@@ -68,12 +84,12 @@ def campus_map():
     uid = session.get("admin") or session.get("student")
     user_rows = query("SELECT userID, user_name, email FROM users WHERE userID=%s", (uid,)) if uid else ()
     facilities = query(
-        "SELECT f.facilityID, f.buildingID, f.categoryID, f.floor, f.facility_status, "
+        "SELECT f.facilityID, f.buildingID, f.categoryID, f.floor, f.facility_note, f.facility_status, "
         "COUNT(r.reportID) AS report_count, "
         "COUNT(CASE WHEN r.review_status='Pending' THEN 1 END) AS pending_count "
         "FROM facilities f LEFT JOIN reports r ON r.facilityID=f.facilityID "
         "WHERE NOT f.archived "
-        "GROUP BY f.facilityID, f.buildingID, f.categoryID, f.floor, f.facility_status "
+        "GROUP BY f.facilityID "
         "ORDER BY f.facilityID"
     )
     return jsonify(buildings=query("SELECT buildingID, build_name, campus, map_x, map_y FROM buildings ORDER BY build_name"),
@@ -88,12 +104,53 @@ def login():
     data = request.get_json() or {}
     role = "student" if data.get("role") == "student" else "admin"
     table = "students" if role == "student" else "admins"
-    rows = query(f"SELECT u.userID, u.user_password FROM users u JOIN {table} s USING (userID) WHERE email=%s", (data.get("email"),))
-    if not rows or rows[0]["user_password"] != data.get("password"):
+    email = data.get("email")
+    password = data.get("password")
+    if not isinstance(email, str) or not isinstance(password, str):
+        abort(401)
+    rows = query(f"SELECT u.userID, u.user_password FROM users u JOIN {table} s USING (userID) WHERE email=%s", (email.strip().lower(),))
+    if not rows:
+        abort(401)
+    stored = rows[0]["user_password"]
+    valid = check_password_hash(stored, password) if stored.startswith("pbkdf2:") else stored == password
+    if not valid:
         abort(401)
     session.clear()
     session[role] = rows[0]["userID"]
     return "", 204
+
+
+@app.post("/api/students")
+def register_student():
+    data = request.get_json()
+    email = data.get("email") if isinstance(data, dict) else None
+    email = email.strip().lower() if isinstance(email, str) else ""
+    if not re.fullmatch(r"[a-z0-9_-]+(?:\.[a-z0-9_-]+)*@(?:connect\.)?hku\.hk", email) or len(email.split("@")[0]) > 64:
+        return jsonify(error="Use your @connect.hku.hk or @hku.hk email."), 400
+    password = data.get("password")
+    if not isinstance(password, str) or not 8 <= len(password) <= 128:
+        return jsonify(error="Choose a password with 8 to 128 characters."), 400
+    name = data.get("user_name")
+    if not isinstance(name, str) or not 1 <= len(name.strip()) <= 100:
+        invalid("Enter a username of up to 100 characters.")
+    password_hash = generate_password_hash(password, method="pbkdf2:sha256:600000")
+
+    def create(cursor):
+        cursor.execute("INSERT INTO users (user_name,email,user_password) VALUES (%s,%s,%s)",
+                       (name.strip(), email, password_hash))
+        uid = cursor.lastrowid
+        cursor.execute("INSERT INTO students (userID) VALUES (%s)", (uid,))
+        return uid
+
+    try:
+        uid = transaction(create)
+    except pymysql.err.IntegrityError as error:
+        if error.args[0] == 1062:
+            return jsonify(error="This email is already registered. Sign in to continue."), 409
+        raise
+    session.clear()
+    session["student"] = uid
+    return jsonify(userID=uid), 201
 
 
 @app.delete("/api/session")
@@ -102,38 +159,72 @@ def logout():
     return "", 204
 
 
+@app.get("/api/facilities/archived")
+def archived_facilities():
+    role("admin")
+    return jsonify(query(
+        "SELECT facilityID, buildingID, categoryID, floor, facility_note, facility_status, archived "
+        "FROM facilities WHERE archived ORDER BY buildingID, floor, facilityID"
+    ))
+
+
 @app.post("/api/facilities")
 @app.route("/api/facilities/<int:facility_id>", methods=["PUT", "DELETE"])
-def save_facility(facility_id=None):
-    if not session.get("admin"):
-        abort(403)
+@app.post("/api/facilities/<int:facility_id>/restore", defaults={"restore": True})
+def save_facility(facility_id=None, restore=False):
+    role("admin")
     if request.method == "DELETE":
         if not query("UPDATE facilities SET archived=TRUE WHERE facilityID=%s AND NOT archived", (facility_id,), True):
             abort(404)
         return "", 204
-    data = request.get_json()
-    floor = str(data.get("floor") or "").strip()
+
+    data = request.get_json(silent=True)
+    if data is None and restore:
+        data = {}
+    if not isinstance(data, dict):
+        abort(400)
+    note = data.get("facility_note")
+    if note is not None:
+        if not isinstance(note, str) or len(note.strip()) > 255:
+            invalid("Use up to 255 characters for the facility note.")
+        note = note.strip() or None
     status = data.get("facility_status")
-    if not 1 <= len(floor) <= 20 or status not in STATUSES:
-        abort(400)
-    values = (data.get("buildingID"), data.get("categoryID"), floor, status)
-    try:
+    if not restore and status not in STATUSES:
+        invalid("Choose a facility status.")
+
+    def save(cursor):
         if facility_id is None:
-            query("INSERT INTO facilities (buildingID, categoryID, floor, facility_status) VALUES (%s,%s,%s,%s)", values, True)
-        else:
-            def edit(cursor):
-                cursor.execute("SELECT facility_status FROM facilities WHERE facilityID=%s AND NOT archived FOR UPDATE", (facility_id,))
-                old = cursor.fetchone()
-                if not old:
-                    abort(404)
-                cursor.execute("UPDATE facilities SET buildingID=%s, categoryID=%s, floor=%s, facility_status=%s WHERE facilityID=%s", (*values, facility_id))
-                if old["facility_status"] != status:
-                    cursor.execute("INSERT INTO revisions (facilityID, adminID, old_status, new_status) VALUES (%s,%s,%s,%s)",
-                                   (facility_id, session["admin"], old["facility_status"], status))
-                    cursor.execute("UPDATE reports SET review_status='Expired' WHERE facilityID=%s AND review_status='Pending' AND report_create_time<CURRENT_TIMESTAMP", (facility_id,))
-            transaction(edit)
-    except (pymysql.IntegrityError, pymysql.DataError):
-        abort(400)
+            floor = str(data.get("floor") or "").strip()
+            if not 1 <= len(floor) <= 20:
+                invalid("Enter a floor of up to 20 characters.")
+            cursor.execute("INSERT INTO facilities (buildingID, categoryID, floor, facility_status, facility_note) "
+                           "VALUES (%s,%s,%s,%s,%s)", (data.get("buildingID"), data.get("categoryID"), floor, status, note))
+            return
+        cursor.execute("SELECT buildingID, categoryID, floor, facility_status, facility_note FROM facilities "
+                       "WHERE facilityID=%s AND archived=%s FOR UPDATE", (facility_id, restore))
+        old = cursor.fetchone()
+        if not old:
+            abort(404)
+        if any(key in data and str(data[key]) != str(old[key]) for key in ("buildingID", "categoryID", "floor")):
+            invalid("A facility’s building, category and floor are fixed.")
+        new_note = note if "facility_note" in data else old["facility_note"]
+        if restore:
+            cursor.execute("UPDATE facilities SET archived=FALSE, facility_note=%s WHERE facilityID=%s", (new_note, facility_id))
+            return
+        cursor.execute("UPDATE facilities SET facility_status=%s, facility_note=%s WHERE facilityID=%s", (status, new_note, facility_id))
+        if old["facility_status"] != status:
+            cursor.execute("INSERT INTO revisions (facilityID, adminID, old_status, new_status) VALUES (%s,%s,%s,%s)",
+                           (facility_id, session["admin"], old["facility_status"], status))
+            cursor.execute("UPDATE reports SET review_status='Expired' WHERE facilityID=%s AND review_status='Pending'", (facility_id,))
+
+    try:
+        transaction(save)
+    except pymysql.MySQLError as error:
+        if error.args[0] == 1644:
+            invalid(error.args[1], 409)
+        if isinstance(error, (pymysql.IntegrityError, pymysql.DataError)):
+            invalid("Check the facility details and try again.")
+        raise
     return "", 204
 
 
@@ -228,7 +319,7 @@ def list_reports():
     rows = query(
         "SELECT r.reportID,r.studentID,r.facilityID,r.create_note,r.review_note,r.proposed_status,r.review_status,"
         "CAST(r.report_create_time AS CHAR) AS created,CAST(r.review_time AS CHAR) AS reviewed,"
-        "f.buildingID,f.facility_status,f.floor,b.build_name,c.category_name,u.user_name,v.old_status,v.new_status,"
+        "f.buildingID,f.facility_status,f.floor,f.facility_note,b.build_name,c.category_name,u.user_name,v.old_status,v.new_status,"
         "(SELECT COUNT(*) FROM likes l WHERE l.reportID=r.reportID) AS like_count,"
         "EXISTS(SELECT 1 FROM likes l WHERE l.reportID=r.reportID AND l.studentID=%s) AS liked "
         "FROM reports r JOIN facilities f USING(facilityID) JOIN buildings b USING(buildingID) "
@@ -240,7 +331,7 @@ def list_reports():
     if rows:
         for photo in query("SELECT reportID,photo FROM report_photos WHERE reportID IN %s ORDER BY photo", (tuple(by_id),)):
             filename = photo["photo"]
-            by_id[photo["reportID"]]["photos"].append({"name":filename, "available":(PHOTO_DIR / filename).is_file()})
+            by_id[photo["reportID"]]["photos"].append({"name":filename, "available":(photo_directory(filename) / filename).is_file()})
     return jsonify(reports=rows)
 
 
@@ -248,7 +339,7 @@ def list_reports():
 def show_photo(filename):
     if not (session.get("student") or session.get("admin")):
         abort(403)
-    return send_from_directory(PHOTO_DIR, filename)
+    return send_from_directory(photo_directory(filename), filename)
 
 
 def notify(cursor, report_id, student=None):
@@ -273,9 +364,12 @@ def submit_report():
         abort(400)
     saved = []
     def submit(cursor):
-        cursor.execute("SELECT facilityID FROM facilities WHERE facilityID=%s AND NOT archived FOR UPDATE", (data.get("facilityID"),))
-        if not cursor.fetchone():
+        cursor.execute("SELECT facility_status FROM facilities WHERE facilityID=%s AND NOT archived FOR UPDATE", (data.get("facilityID"),))
+        facility = cursor.fetchone()
+        if not facility:
             abort(404)
+        if status == facility["facility_status"]:
+            invalid("The facility already has this status. Refresh to see its current status.", 409)
         cursor.execute("INSERT INTO reports (facilityID,studentID,proposed_status,review_status,create_note) VALUES (%s,%s,%s,'Pending',%s)",
                        (data["facilityID"],uid,status,data.get("create_note") or None))
         rid = cursor.lastrowid
@@ -345,14 +439,15 @@ def review_report(report_id):
         report = cursor.fetchone()
         if not facility or not report:
             abort(409)
+        if decision == "Approved" and report["proposed_status"] == facility["facility_status"]:
+            invalid("The facility already has this status. This report can be rejected.", 409)
         cursor.execute("UPDATE reports SET review_status=%s,adminID=%s,review_note=%s,review_time=CURRENT_TIMESTAMP WHERE reportID=%s",
                        (decision,uid,data.get("review_note") or None,report_id))
         if decision == "Approved":
             cursor.execute("UPDATE facilities SET facility_status=%s WHERE facilityID=%s", (report["proposed_status"],fid))
             cursor.execute("INSERT INTO revisions (facilityID,reportID,adminID,old_status,new_status) VALUES (%s,%s,%s,%s,%s)",
                            (fid,report_id,uid,facility["facility_status"],report["proposed_status"]))
-            cursor.execute("UPDATE reports SET review_status='Expired' WHERE facilityID=%s AND review_status='Pending' AND report_create_time<%s",
-                           (fid,report["report_create_time"]))
+            cursor.execute("UPDATE reports SET review_status='Expired' WHERE facilityID=%s AND review_status='Pending'", (fid,))
         notify(cursor,report_id,report["studentID"])
     transaction(review)
     return "",204

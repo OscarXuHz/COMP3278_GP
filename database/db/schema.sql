@@ -39,8 +39,11 @@ CREATE TABLE facilities (
   buildingID VARCHAR(10) NOT NULL,
   categoryID BIGINT UNSIGNED NOT NULL,
   floor VARCHAR(20) NOT NULL,
+  facility_note VARCHAR(255) NULL,
   facility_status VARCHAR(20) NOT NULL,
   archived BOOLEAN NOT NULL DEFAULT FALSE,
+  CONSTRAINT facilities_note_chk
+    CHECK (facility_note IS NULL OR CHAR_LENGTH(facility_note) BETWEEN 1 AND 255),
   CONSTRAINT facilities_status_chk
     CHECK (facility_status IN ('Available', 'Unavailable')),
   FOREIGN KEY (buildingID) REFERENCES buildings (buildingID),
@@ -84,8 +87,6 @@ CREATE TABLE report_photos (
   FOREIGN KEY (reportID) REFERENCES reports (reportID)
 );
 
--- reportID is null when an admin changes facility status directly.
--- When reportID is set, facilityID is the facility that report is about.
 CREATE TABLE revisions (
   revisionID BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   facilityID BIGINT UNSIGNED NOT NULL,
@@ -120,8 +121,6 @@ CREATE TABLE favorites (
   FOREIGN KEY (facilityID) REFERENCES facilities (facilityID)
 );
 
--- Notification ISA Review_notification, New_notification: disjoint, total.
--- A notificationID is inserted into exactly one subclass table.
 CREATE TABLE notifications (
   notificationID BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   notification_create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -148,3 +147,46 @@ CREATE TABLE new_notifications (
   FOREIGN KEY (reportID) REFERENCES reports (reportID),
   FOREIGN KEY (adminID) REFERENCES admins (userID)
 );
+
+-- When two or more active facilities share a building, category, and floor,
+-- each one must have a note. A single facility on that floor may leave it empty.
+DELIMITER $$
+
+CREATE TRIGGER facilities_note_required_insert
+BEFORE INSERT ON facilities
+FOR EACH ROW
+BEGIN
+  IF NEW.archived = FALSE AND EXISTS (
+    SELECT 1
+    FROM facilities AS other
+    WHERE other.buildingID = NEW.buildingID
+      AND other.categoryID = NEW.categoryID
+      AND other.floor = NEW.floor
+      AND other.archived = FALSE
+      AND (NEW.facility_note IS NULL OR other.facility_note IS NULL)
+  ) THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Facilities sharing a building, category, and floor must each have a note';
+  END IF;
+END$$
+
+CREATE TRIGGER facilities_note_required_update
+BEFORE UPDATE ON facilities
+FOR EACH ROW
+BEGIN
+  IF NEW.archived = FALSE AND EXISTS (
+    SELECT 1
+    FROM facilities AS other
+    WHERE other.buildingID = NEW.buildingID
+      AND other.categoryID = NEW.categoryID
+      AND other.floor = NEW.floor
+      AND other.archived = FALSE
+      AND other.facilityID <> NEW.facilityID
+      AND (NEW.facility_note IS NULL OR other.facility_note IS NULL)
+  ) THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Facilities sharing a building, category, and floor must each have a note';
+  END IF;
+END$$
+
+DELIMITER ;

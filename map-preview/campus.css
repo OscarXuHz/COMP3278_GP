@@ -688,7 +688,7 @@ h1 {
   scrollbar-color: #cbd5d0 transparent;
 }
 
-/* Open Building Section (Hairline-Divided) */
+/* Building groups */
 .building-group {
   margin: 0;
   border: 0;
@@ -705,7 +705,7 @@ h1 {
   gap: 10px;
   padding: 9px 16px 7px;
   border: 0;
-  border-top: 1px solid var(--line);
+  border-top: 3px solid #70837a;
   border-bottom: 1px solid #eef1ef;
   border-radius: 0;
   background: #fafbfa;
@@ -777,6 +777,7 @@ h1 {
   min-width: 0;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 9px;
   padding: 9px 6px 9px 16px;
   border: 0;
@@ -815,6 +816,24 @@ h1 {
   color: var(--ink);
 }
 .facility-row.selected .facility-title { color: var(--accent); }
+
+.facility-note {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.archive-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.status-option input:disabled + .status-option-card,
+.row-btn.approve:disabled { opacity: .5; cursor: default; }
 
 .facility-floor {
   font-size: 12px;
@@ -1137,7 +1156,10 @@ h1 {
 .notice-card {
   width: 100%;
   position: relative;
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
   gap: 4px;
   margin: 0;
   padding: 11px 16px;
@@ -1287,15 +1309,6 @@ h1 {
   transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   cursor: pointer;
 }
-.map-pin .pin-dot {
-  position: absolute;
-  right: -2px;
-  bottom: -2px;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  border: 1.5px solid #fff;
-}
 .map-pin .pin-label,
 .map-pin .pin-count { display: none; }
 .leaflet-marker-icon:hover .map-pin {
@@ -1312,15 +1325,6 @@ h1 {
   transform: translate(-50%, -55%) scale(1.04);
   box-shadow: 0 0 0 4px rgba(18, 71, 52, 0.22), 0 8px 22px rgba(18, 71, 52, 0.34);
 }
-.map-pin.active .pin-dot {
-  position: static;
-  width: 7px;
-  height: 7px;
-  border: 0;
-}
-.map-pin.active .pin-dot.available { background: #8fd3b6; }
-.map-pin.active .pin-dot.unavailable { background: #fca5a5; }
-.map-pin.active .pin-dot.unknown { background: rgba(255, 255, 255, 0.7); }
 .map-pin.active .pin-label,
 .map-pin.active .pin-count { display: inline; }
 .pin-id {
@@ -1432,6 +1436,11 @@ h1 {
 }
 .map-popup-item-btn:hover { background: transparent; }
 .map-popup-item:hover { background: #f6f9f7; }
+.map-popup-item.selected {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 var(--accent);
+  padding-left: 9px;
+}
 .map-popup-item-name {
   font-weight: 600;
   color: var(--ink);
@@ -1609,6 +1618,24 @@ h2 {
 }
 .modal-form input:not([type="radio"]):not([type="file"]),
 .modal-form select { height: 38px; }
+#editor :is(input, select):disabled {
+  appearance: none;
+  opacity: 1;
+  color: #526059;
+  -webkit-text-fill-color: #526059;
+  border: 1px dashed #a3afa9;
+  background: #edf0ee url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23526059' stroke-width='1.8'%3E%3Crect x='5' y='10' width='14' height='11' rx='2'/%3E%3Cpath d='M8 10V7a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E") no-repeat right 11px center;
+  padding-right: 36px;
+  cursor: not-allowed;
+}
+#facility-note-hint {
+  padding: 8px 12px;
+  background: var(--bad-bg);
+  border-left: 3px solid var(--bad-ink);
+  border-radius: 4px;
+  color: var(--bad-ink);
+}
+#editor input[aria-invalid="true"] { border-color: var(--bad-ink); }
 .modal-form textarea {
   min-height: 66px;
   padding: 9px 12px;
@@ -1736,7 +1763,7 @@ h2 {
   color: var(--ink-soft);
   margin-bottom: 8px;
 }
-.status-options { display: grid; gap: 8px; }
+.status-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .status-option { position: relative; cursor: pointer; }
 .status-option input {
   position: absolute;
@@ -1760,7 +1787,7 @@ h2 {
   background: var(--accent-soft);
   box-shadow: 0 0 0 3px rgba(18, 71, 52, 0.11);
 }
-.status-desc { font-size: 12px; color: var(--muted); font-weight: 400; }
+.status-option input:focus-visible + .status-option-card { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* Revision Timeline */
 .timeline {

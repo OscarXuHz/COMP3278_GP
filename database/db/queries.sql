@@ -6,6 +6,7 @@ SELECT
   b.build_name,
   c.category_name,
   f.floor,
+  f.facility_note,
   f.facility_status
 FROM facilities AS f
 JOIN buildings AS b ON b.buildingID = f.buildingID
@@ -46,6 +47,7 @@ SELECT
   b.build_name,
   c.category_name,
   f.floor,
+  f.facility_note,
   r.proposed_status,
   r.review_status,
   GROUP_CONCAT(p.photo ORDER BY p.photo SEPARATOR ', ') AS photos
@@ -60,6 +62,7 @@ GROUP BY
   b.build_name,
   c.category_name,
   f.floor,
+  f.facility_note,
   r.proposed_status,
   r.review_status;
 
@@ -80,6 +83,7 @@ SELECT
   b.build_name,
   c.category_name,
   f.floor,
+  f.facility_note,
   r.proposed_status,
   r.review_status,
   r.adminID,
@@ -94,11 +98,12 @@ WHERE r.review_status = 'Expired'
 ORDER BY r.report_create_time;
 
 -- 3. Approve report (Report ID = 10, Admin ID = 4)
--- Earlier pending reports on the same facility expire. Later ones stay pending.
+-- Every other pending report on the same facility expires: each one proposes
+-- the status the facility now has, so none of them can be approved.
 SET @facility_id = NULL;
 SET @old_status = NULL;
 SET @new_status = NULL;
-SET @review_time = '2026-03-10 16:00:00';
+SET @review_time = '2026-11-19 16:00:00';
 
 START TRANSACTION;
 
@@ -126,13 +131,12 @@ WHERE reportID = 10
   AND review_status = 'Pending'
   AND EXISTS (SELECT 1 FROM admins WHERE userID = 4);
 
-UPDATE reports AS earlier
+UPDATE reports AS other
 JOIN reports AS approved ON approved.reportID = 10
-SET earlier.review_status = 'Expired'
-WHERE earlier.facilityID = approved.facilityID
-  AND earlier.reportID <> approved.reportID
-  AND earlier.review_status = 'Pending'
-  AND earlier.report_create_time < approved.report_create_time
+SET other.review_status = 'Expired'
+WHERE other.facilityID = approved.facilityID
+  AND other.reportID <> approved.reportID
+  AND other.review_status = 'Pending'
   AND approved.review_status = 'Approved'
   AND approved.adminID = 4;
 
@@ -175,8 +179,8 @@ WHERE reportID = 10
 ROLLBACK;
 
 -- 4. Reject report (Report ID = 2, Admin ID = 5)
--- Rejection does not expire earlier pending reports.
-SET @review_time = '2026-03-11 09:00:00';
+-- Rejection leaves the other pending reports on the facility unchanged.
+SET @review_time = '2026-11-20 09:00:00';
 
 START TRANSACTION;
 
@@ -244,28 +248,28 @@ WHERE reportID = 9
 
 ROLLBACK;
 
--- 6. Student submits a new report (Student ID = 1, Facility ID = 2)
+-- 6. Student submits a new report (Student ID = 1, Facility ID = 69)
 -- Also store a photo and notify every admin.
 START TRANSACTION;
 
 INSERT INTO reports (
   facilityID, studentID, adminID, proposed_status, review_status, create_note
 )
-SELECT 2, 1, NULL, 'Unavailable', 'Pending', 'Water dispenser on 3/F is empty'
+SELECT 69, 1, NULL, 'Unavailable', 'Pending', 'The dispenser by the Jockey Club Tower lift has stopped dispensing water'
 FROM students
 WHERE userID = 1
   AND EXISTS (
     SELECT 1
     FROM facilities
-    WHERE facilityID = 2
+    WHERE facilityID = 69
       AND archived = FALSE
   );
 
 SET @report_id = LAST_INSERT_ID();
-SET @notice_time = '2026-03-12 09:00:00';
+SET @notice_time = '2026-11-21 09:00:00';
 
 INSERT INTO report_photos (reportID, photo)
-SELECT r.reportID, 'report-new-dispenser.jpg'
+SELECT r.reportID, 'ric-cpd-jockey-club.jpg'
 FROM reports AS r
 WHERE r.reportID = @report_id
   AND r.studentID = 1
@@ -312,9 +316,9 @@ ROLLBACK;
 START TRANSACTION;
 
 INSERT INTO facilities (
-  buildingID, categoryID, floor, facility_status
+  buildingID, categoryID, floor, facility_note, facility_status
 )
-SELECT '26', 1, '2/F', 'Available'
+SELECT '26', 1, '2/F', 'Beside the help desk', 'Available'
 FROM admins
 WHERE userID = 4;
 
@@ -369,6 +373,7 @@ SELECT
   b.build_name,
   c.category_name,
   f.floor,
+  f.facility_note,
   f.facility_status
 FROM favorites AS fav
 JOIN facilities AS f ON f.facilityID = fav.facilityID
@@ -407,8 +412,8 @@ WHERE rn.studentID = 2
 ORDER BY n.notification_create_time;
 
 -- 15. Admin changes facility status directly (Admin ID = 4, Facility ID = 20)
--- Earlier pending reports on this facility expire. Later ones stay pending.
-SET @change_time = '2026-03-11 10:00:00';
+-- Every pending report on this facility expires.
+SET @change_time = '2026-11-20 10:00:00';
 
 START TRANSACTION;
 
@@ -430,7 +435,6 @@ UPDATE reports
 SET review_status = 'Expired'
 WHERE facilityID = 20
   AND review_status = 'Pending'
-  AND report_create_time < @change_time
   AND EXISTS (
     SELECT 1
     FROM revisions
@@ -452,6 +456,7 @@ SELECT
   b.map_y,
   c.category_name,
   f.floor,
+  f.facility_note,
   f.facility_status
 FROM facilities AS f
 JOIN buildings AS b ON b.buildingID = f.buildingID
@@ -466,6 +471,7 @@ SELECT
   b.build_name,
   c.category_name,
   f.floor,
+  f.facility_note,
   f.facility_status
 FROM facilities AS f
 JOIN buildings AS b ON b.buildingID = f.buildingID
