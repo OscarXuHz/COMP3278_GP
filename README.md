@@ -128,7 +128,7 @@ Set connection variables using PowerShell syntax, such as `$env:DB_USER = 'root'
 | Administrator | `admin2@connect.hku.hk` | `admin2` |
 
 - `/`: public campus map; no login required.
-- `/student`: student login, registration, facility reports and **My reports**. Choose **Create student account** to register with an `@connect.hku.hk` or `@hku.hk` address and a password of 8–128 characters. Registration checks the email domain and signs the student in immediately.
+- `/student`: student login, registration, facility reports and **My reports**. Choose **Create student account** to register with a username, an `@connect.hku.hk` or `@hku.hk` address and a password of 8–128 characters. Registration checks the email domain and signs the student in immediately.
 - `/admin`: administrator login, facility management, **Reports** and **History**.
 
 These are seeded demonstration accounts. The app uses one login session per browser profile. To switch roles, sign out and sign in on the other role's page; two ordinary tabs share the same session. Separate browser profiles/private windows can be used for simultaneous student/admin demonstrations.
@@ -143,9 +143,9 @@ These steps change the local demo data. The counts above describe the fresh seed
 4. **Check history:** return to **Facilities** and open that facility's **History**. It should show the old/new status, approving administrator, reporting student and report ID. Refresh the public map or another open browser window to see the updated facility status; other tabs do not receive live updates.
 5. **Reject:** submit another student report and reject it as an administrator. Its status becomes `Rejected`; the facility status and revision history stay unchanged.
 6. **Delete a pending report:** as a student, submit a new report and withdraw it from **My reports** before review. This deletes that student's pending row from `reports`; approved/rejected reports cannot be withdrawn.
-7. **Manage facilities:** as an administrator, use **+ Add facility** to create a demo facility, **Edit** to change it, and **Archive** to remove it from the public map. Archive is a soft delete (`archived=TRUE`); the row remains in MySQL.
+7. **Manage facilities:** as an administrator, use **+ Add facility** to create a demo facility, **Edit** to change it, and **Archive** to remove it from the public map. Edit updates the status and facility note. The building, category and floor are fixed. Active facilities sharing all three need a note on each record. Use **Archived → Restore** to return an archived facility to the map.
 
-Approval runs in one transaction: lock the pending report and its facility with `SELECT ... FOR UPDATE`, update `reports`, update `facilities`, and insert a `revisions` row. A failure rolls back the transaction. Each report can have at most one revision (`UNIQUE(reportID)`). Both decisions notify the reporting student. Approval expires older pending reports for the facility. Direct administrator status changes also appear in History.
+Students can only propose a change from the current status. Approval checks the status again before making changes. Approval runs in one transaction: lock the pending report and its facility with `SELECT ... FOR UPDATE`, update `reports`, update `facilities`, and insert a `revisions` row. A failure rolls back the transaction. Each report can have at most one revision (`UNIQUE(reportID)`). Both decisions notify the reporting student. Approval expires older pending reports for the facility. Direct administrator status changes also appear in History.
 
 ## Project structure and database design
 

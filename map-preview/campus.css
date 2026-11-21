@@ -817,6 +817,24 @@ h1 {
 }
 .facility-row.selected .facility-title { color: var(--accent); }
 
+.facility-note {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.archive-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.status-option input:disabled + .status-option-card,
+.row-btn.approve:disabled { opacity: .5; cursor: default; }
+
 .facility-floor {
   font-size: 12px;
   color: var(--muted);

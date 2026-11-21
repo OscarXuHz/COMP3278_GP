@@ -74,6 +74,7 @@
         <div class="results-heading-right">
           <span id="list-sub" class="results-sub"></span>
           {% if admin_page %}
+          <button id="show-archived" class="secondary-btn compact-btn" type="button" hidden>Archived</button>
           <button id="add" class="compact-btn primary" type="button" hidden>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
             <span>Add facility</span>
@@ -119,6 +120,7 @@
       </div>
       <input type="hidden" name="role" value="{{ 'student' if student_page else 'admin' }}">
       <p id="login-message" class="form-error" role="alert"></p>
+      {% if student_page %}<label id="signup-name" hidden>Username<input name="user_name" maxlength="100" autocomplete="nickname" disabled></label>{% endif %}
       <label>HKU Email<input name="email" type="email" autocomplete="username" placeholder="{{ 'student1@connect.hku.hk' if student_page else 'admin1@connect.hku.hk' }}" required></label>
       <label>Password<input name="password" type="password" autocomplete="current-password" placeholder="Enter password" required></label>
       <div class="demo-accounts">
@@ -181,6 +183,15 @@
   {% endif %}
 
   {% if admin_page %}
+  <dialog id="archive-dialog" aria-labelledby="archive-title">
+    <div class="modal-form">
+      <div class="modal-header">
+        <h2 id="archive-title">Archived facilities</h2>
+        <button type="button" id="archive-close" class="icon-close" aria-label="Close archived facilities">×</button>
+      </div>
+      <div id="archive-list"></div>
+    </div>
+  </dialog>
   <dialog id="facility-dialog" aria-labelledby="editor-title">
     <form id="editor" class="modal-form">
       <div class="modal-header">
@@ -196,9 +207,11 @@
         <label>Floor<input name="floor" maxlength="20" placeholder="e.g. 1/F, G/F" required></label>
         <label>Status<select name="facility_status"><option>Available</option><option>Unavailable</option></select></label>
       </div>
+      <label>Facility note<input name="facility_note" maxlength="255" aria-describedby="facility-note-hint"></label>
+      <p id="facility-note-hint" class="modal-note" aria-live="polite" hidden></p>
       <div class="actions">
         <button type="button" id="cancel" class="secondary-btn">Cancel</button>
-        <button class="primary">Save facility</button>
+        <button class="primary" id="editor-save">Save facility</button>
       </div>
     </form>
   </dialog>
