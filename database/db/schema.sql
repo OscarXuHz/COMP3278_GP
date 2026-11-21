@@ -148,9 +148,92 @@ CREATE TABLE new_notifications (
   FOREIGN KEY (adminID) REFERENCES admins (userID)
 );
 
+DELIMITER $$
+
+-- A user is a student or an administrator, never both.
+CREATE TRIGGER students_disjoint_insert
+BEFORE INSERT ON students
+FOR EACH ROW
+BEGIN
+  IF EXISTS (SELECT 1 FROM admins WHERE userID = NEW.userID) THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'A user cannot be both a student and an administrator';
+  END IF;
+END$$
+
+CREATE TRIGGER students_disjoint_update
+BEFORE UPDATE ON students
+FOR EACH ROW
+BEGIN
+  IF EXISTS (SELECT 1 FROM admins WHERE userID = NEW.userID) THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'A user cannot be both a student and an administrator';
+  END IF;
+END$$
+
+CREATE TRIGGER admins_disjoint_insert
+BEFORE INSERT ON admins
+FOR EACH ROW
+BEGIN
+  IF EXISTS (SELECT 1 FROM students WHERE userID = NEW.userID) THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'A user cannot be both a student and an administrator';
+  END IF;
+END$$
+
+CREATE TRIGGER admins_disjoint_update
+BEFORE UPDATE ON admins
+FOR EACH ROW
+BEGIN
+  IF EXISTS (SELECT 1 FROM students WHERE userID = NEW.userID) THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'A user cannot be both a student and an administrator';
+  END IF;
+END$$
+
+-- A notification is a review notification or a new-report notification, never both.
+CREATE TRIGGER review_notifications_disjoint_insert
+BEFORE INSERT ON review_notifications
+FOR EACH ROW
+BEGIN
+  IF EXISTS (SELECT 1 FROM new_notifications WHERE notificationID = NEW.notificationID) THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'A notification cannot be both a review notification and a new-report notification';
+  END IF;
+END$$
+
+CREATE TRIGGER review_notifications_disjoint_update
+BEFORE UPDATE ON review_notifications
+FOR EACH ROW
+BEGIN
+  IF EXISTS (SELECT 1 FROM new_notifications WHERE notificationID = NEW.notificationID) THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'A notification cannot be both a review notification and a new-report notification';
+  END IF;
+END$$
+
+CREATE TRIGGER new_notifications_disjoint_insert
+BEFORE INSERT ON new_notifications
+FOR EACH ROW
+BEGIN
+  IF EXISTS (SELECT 1 FROM review_notifications WHERE notificationID = NEW.notificationID) THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'A notification cannot be both a review notification and a new-report notification';
+  END IF;
+END$$
+
+CREATE TRIGGER new_notifications_disjoint_update
+BEFORE UPDATE ON new_notifications
+FOR EACH ROW
+BEGIN
+  IF EXISTS (SELECT 1 FROM review_notifications WHERE notificationID = NEW.notificationID) THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'A notification cannot be both a review notification and a new-report notification';
+  END IF;
+END$$
+
 -- When two or more active facilities share a building, category, and floor,
 -- each one must have a note. A single facility on that floor may leave it empty.
-DELIMITER $$
 
 CREATE TRIGGER facilities_note_required_insert
 BEFORE INSERT ON facilities
