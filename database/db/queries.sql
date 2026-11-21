@@ -179,7 +179,7 @@ WHERE reportID = 10
 ROLLBACK;
 
 -- 4. Reject report (Report ID = 2, Admin ID = 5)
--- Rejection does not expire earlier pending reports.
+-- Rejection leaves the other pending reports on the facility unchanged.
 SET @review_time = '2026-11-20 09:00:00';
 
 START TRANSACTION;
