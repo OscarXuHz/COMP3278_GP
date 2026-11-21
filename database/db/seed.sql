@@ -190,20 +190,20 @@ INSERT INTO reports (
     'Printer on G/F is out of paper again', NULL, NULL, '2026-11-17 14:00:00'),
   (12, 20, 7, NULL, 'Unavailable', 'Pending',
     'G/F toilet is out of order', NULL, NULL, '2026-11-19 15:00:00'),
-  (52, 4, 1, NULL, 'Unavailable', 'Pending',
+  (13, 4, 1, NULL, 'Unavailable', 'Pending',
     'Demo: The dispenser near the Law Library toilets stopped dispensing water.', NULL, NULL, '2026-11-20 16:40:00'),
-  (53, 69, 2, NULL, 'Unavailable', 'Pending',
+  (14, 69, 2, NULL, 'Unavailable', 'Pending',
     'Demo: The Aqua Hub beside the Jockey Club Tower lift is not dispensing water.', NULL, NULL, '2026-11-20 16:41:00'),
-  (54, 41, 3, NULL, 'Unavailable', 'Pending',
+  (15, 41, 3, NULL, 'Unavailable', 'Pending',
     'Demo: The Main Library 1/F printer is out of paper.', NULL, NULL, '2026-11-20 16:42:00');
 
 INSERT INTO report_photos (reportID, photo) VALUES
   (1, 'ric-printer-sign.jpg'),
   (1, 'ric-copier-screen.jpg'),
   (4, 'ric-print-copy-sign.jpg'),
-  (52, 'ric-law-library.jpg'),
-  (53, 'ric-cpd-jockey-club.jpg'),
-  (54, 'ric-colour-bw-sign.jpg');
+  (13, 'ric-law-library.jpg'),
+  (14, 'ric-cpd-jockey-club.jpg'),
+  (15, 'ric-colour-bw-sign.jpg');
 
 INSERT INTO revisions (
   revisionID, facilityID, reportID, adminID, old_status, new_status, revision_create_time
@@ -383,18 +383,18 @@ INSERT INTO new_notifications (notificationID, reportID, adminID, new_is_read) V
   (50, 12, 5, FALSE),
   (51, 12, 9, FALSE),
   (52, 12, 10, FALSE),
-  (53, 52, 4, FALSE),
-  (54, 52, 5, FALSE),
-  (55, 52, 9, FALSE),
-  (56, 52, 10, FALSE),
-  (57, 53, 4, FALSE),
-  (58, 53, 5, FALSE),
-  (59, 53, 9, FALSE),
-  (60, 53, 10, FALSE),
-  (61, 54, 4, FALSE),
-  (62, 54, 5, FALSE),
-  (63, 54, 9, FALSE),
-  (64, 54, 10, FALSE);
+  (53, 13, 4, FALSE),
+  (54, 13, 5, FALSE),
+  (55, 13, 9, FALSE),
+  (56, 13, 10, FALSE),
+  (57, 14, 4, FALSE),
+  (58, 14, 5, FALSE),
+  (59, 14, 9, FALSE),
+  (60, 14, 10, FALSE),
+  (61, 15, 4, FALSE),
+  (62, 15, 5, FALSE),
+  (63, 15, 9, FALSE),
+  (64, 15, 10, FALSE);
 
 INSERT INTO review_notifications (notificationID, reportID, studentID, review_is_read) VALUES
   (11, 4, 2, FALSE),
